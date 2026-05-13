@@ -47,21 +47,39 @@ def collect_ticktick_focus(start, end, dimensions: list[GrowthDimension], settin
             continue
         duration_minutes = max(0, round((end_time - start_time).total_seconds() / 60))
         task_title = (row["ZTITLE"] or row["ZCONTENT"] or row["ZNOTE"] or "未命名专注").strip()
+        # ZADJUSTEDFOCUSDURATION / ZPAUSEDURATION：TickTick Core Data 中多为「秒」
+        pause_minutes = max(0, round((row["ZPAUSEDURATION"] or 0) / 60))
+        adj_raw = row["ZADJUSTEDFOCUSDURATION"]
+        adj_from_db = max(0, round((adj_raw or 0) / 60)) if adj_raw is not None else 0
+        if duration_minutes and adj_from_db > duration_minutes + 10:
+            adjusted_focus_minutes = duration_minutes
+        else:
+            adjusted_focus_minutes = adj_from_db
+
+        time_parts: list[str] = []
+        if adjusted_focus_minutes and adjusted_focus_minutes != duration_minutes:
+            time_parts.append(f"有效{adjusted_focus_minutes}分")
+        time_parts.append(f"时段{duration_minutes}分")
+        if pause_minutes:
+            time_parts.append(f"暂停{pause_minutes}分")
+        badge = "「" + " · ".join(time_parts) + "」"
+        title = f"滴答专注：{task_title} {badge}"
+
         event = LifeEvent(
             timestamp=start_time.isoformat(timespec="minutes"),
             source="ticktick_focus",
             type="focus",
             topic=["focus", "task", "deep work"],
-            title=f"滴答专注：{task_title}（{duration_minutes} 分钟）",
+            title=title,
             importance=0.84,
-            dimensions=["engineering_tools"] if "instinct" in task_title.lower() else ["personal_growth"],
+            dimensions=["personal_growth"],
             metadata={
                 "task_title": task_title,
                 "start": start_time.isoformat(timespec="minutes"),
                 "end": end_time.isoformat(timespec="minutes"),
                 "duration_minutes": duration_minutes,
-                "adjusted_focus_minutes": round((row["ZADJUSTEDFOCUSDURATION"] or 0) / 60),
-                "pause_minutes": round((row["ZPAUSEDURATION"] or 0) / 60),
+                "adjusted_focus_minutes": adjusted_focus_minutes,
+                "pause_minutes": pause_minutes,
                 "task_id": row["ZTASKID"] or "",
             },
         )

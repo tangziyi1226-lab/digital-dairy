@@ -40,6 +40,31 @@ def detect_ai_chat_source(host: str | None) -> str | None:
     return None
 
 
+def is_ai_conversation_thread_url(ai_source: str, host: str | None, path: str | None) -> bool:
+    """
+    True when URL looks like an actual chat thread (not营销页/设置页等).
+    Used so chatgpt/doubao/deepseek collectors only emit对话标题类记录。
+    """
+    h = (host or "").lower()
+    p = (path or "").strip()
+    if not p:
+        return False
+    if not p.startswith("/"):
+        p = "/" + p
+    pl = p.lower()
+    if ai_source == "chatgpt":
+        if not ("chatgpt.com" in h or "openai.com" in h):
+            return False
+        return "/c/" in pl or "/g/" in pl
+    if ai_source == "doubao":
+        return "doubao.com" in h and "/chat" in pl
+    if ai_source == "deepseek":
+        if "deepseek" not in h:
+            return False
+        return "/chat/" in pl or "/c/" in pl or "/a/chat/" in pl
+    return False
+
+
 def detect_platform(host: str | None) -> str | None:
     if not host:
         return None

@@ -4,12 +4,12 @@ import os
 import sys
 from pathlib import Path
 
-VISUAL_SECTION_MARKER = "## 一日可视化（手机宽整页长图）"
+VISUAL_SECTION_MARKER = "## 一日可视化"
 
 
 def strip_trailing_visual_section(markdown_text: str) -> str:
     """Remove previously appended visual screenshot block so re-runs do not duplicate."""
-    legacy_marker = "## 一日可视化（手机比例截屏）"
+    legacy_marker = "## 一日可视化"
     for marker in (VISUAL_SECTION_MARKER, legacy_marker):
         needle = f"\n---\n\n{marker}"
         if needle in markdown_text:
@@ -34,7 +34,7 @@ def append_visual_screenshots_markdown(
         "",
         VISUAL_SECTION_MARKER,
         "",
-        f"以下为当日 HTML 可视化报告：**{viewport_width}px 宽、单张整页长图**（非多段拼接）。",
+        f"以下为当日 HTML 可视化报告：",
         "",
     ]
     for rel in relative_image_paths:

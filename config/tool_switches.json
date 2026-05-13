@@ -5,6 +5,7 @@
   "edge": {
     "enabled": true
   },
+  // 滴答清单
   "ticktick_focus": {
     "enabled": true
   },
