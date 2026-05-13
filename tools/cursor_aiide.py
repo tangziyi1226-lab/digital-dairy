@@ -91,6 +91,8 @@ def collect_cursor(start, end, dimensions: list[GrowthDimension], settings: dict
                     "lines_added": item.get("totalLinesAdded", 0),
                     "lines_removed": item.get("totalLinesRemoved", 0),
                     "files_changed": item.get("filesChangedCount", 0),
+                    "context_usage_percent": item.get("contextUsagePercent"),
+                    "subtitle": item.get("subtitle"),
                 },
             )
             event.dimensions = sorted(set(event.dimensions + assign_dimensions(event, dimensions)))

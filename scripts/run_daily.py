@@ -4,6 +4,8 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -34,6 +36,7 @@ from tools.llm import chat_completion
 from tools.notifier import send_notifications
 from tools.registry import TOOL_REGISTRY
 from tools.reporting import build_report_context
+from tools.visual_report_screenshots import append_visual_report_screenshots_to_summary
 
 
 def parse_args() -> argparse.Namespace:
@@ -42,6 +45,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--settings", default="config/settings.json", help="Settings JSON path.")
     parser.add_argument("--dry-run", action="store_true", help="Collect events without calling API.")
     parser.add_argument("--no-notify", action="store_true", help="Skip email / WeChat notification.")
+    parser.add_argument(
+        "--no-visual-screenshots",
+        action="store_true",
+        help="Skip HTML visual report mobile screenshots + markdown appendix.",
+    )
     return parser.parse_args()
 
 
@@ -128,7 +136,7 @@ def build_messages(settings: dict[str, object], date_text: str, events: list[Lif
     return [
         {
             "role": "system",
-            "content": "你是 Personal Growth OS 的 Growth Analyst。温暖、克制、具体，不使用 emoji。",
+            "content": "你是 Personal Growth OS 的 Growth Analyst。温暖、克制、具体，不使用 emoji。严格遵守用户消息里的章节与篇幅要求；输出要高度结构化，避免长段落与流水账。",
         },
         {"role": "user", "content": rendered},
     ]
@@ -141,6 +149,14 @@ def enforce_retention(settings: dict[str, object]) -> None:
         return
     summaries = sorted(summary_dir.glob("*-summary.md"), key=lambda path: path.name)
     for path in summaries[:-keep_days]:
+        vr = settings.get("visual_report")
+        drop_visual_dirs = not (isinstance(vr, dict) and vr.get("cleanup_screenshot_dirs") is False)
+        if drop_visual_dirs:
+            matched = re.match(r"(\d{4}-\d{2}-\d{2})-summary\.md\Z", path.name)
+            if matched:
+                shot_dir = DATA_DIR / "visual" / "screenshots" / matched.group(1)
+                if shot_dir.is_dir():
+                    shutil.rmtree(shot_dir, ignore_errors=True)
         path.unlink()
 
 
@@ -164,8 +180,18 @@ def main() -> int:
     summary_path.write_text(summary.strip() + "\n", encoding="utf-8")
     enforce_retention(settings)
 
+    if not args.no_visual_screenshots:
+        append_visual_report_screenshots_to_summary(settings, date_text, summary_path)
+
+    final_summary_text = summary_path.read_text(encoding="utf-8")
+
     if not args.no_notify:
-        send_notifications(settings, f"Personal Growth OS {date_text}", summary)
+        send_notifications(
+            settings,
+            f"Personal Growth OS {date_text}",
+            final_summary_text,
+            markdown_base_dir=summary_path.parent,
+        )
 
     print(f"Collected {len(events)} events.")
     print(f"Events: {events_path}")

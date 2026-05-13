@@ -29,6 +29,14 @@
   "data_retention": {
     "daily_summaries_keep_days": 3
   },
+  "visual_report": {
+    "enabled": true,
+    "viewport_width": 390,
+    "viewport_height": 844,
+    "device_scale_factor": 2,
+    "screenshot_stem": "report-mobile",
+    "cleanup_screenshot_dirs": true
+  },
   "notifications": {
     "email": {
       "enabled": false,
