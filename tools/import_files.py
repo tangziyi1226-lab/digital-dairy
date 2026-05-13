@@ -4,7 +4,7 @@ import csv
 import json
 from pathlib import Path
 
-from tools.common import DATA_DIR, GrowthDimension, LifeEvent, assign_dimensions
+from tools.common import DATA_DIR, ROOT, GrowthDimension, LifeEvent, assign_dimensions
 
 
 def collect_json_csv_folder(
@@ -18,9 +18,15 @@ def collect_json_csv_folder(
     events: list[LifeEvent] = []
 
     def build(item: dict[str, object], fallback_source: str) -> None:
-        timestamp = str(item.get("timestamp") or item.get("time") or f"{target_date}T12:00:00+08:00")
-        if not timestamp.startswith(target_date):
+        date_only = str(item.get("date") or "").strip()[:10]
+        if date_only and len(date_only) == 10 and date_only != target_date:
             return
+        if date_only and len(date_only) == 10:
+            timestamp = str(item.get("timestamp") or item.get("time") or f"{date_only}T12:00:00+08:00")
+        else:
+            timestamp = str(item.get("timestamp") or item.get("time") or f"{target_date}T12:00:00+08:00")
+            if not timestamp.startswith(target_date):
+                return
         source = str(item.get("source") or item.get("platform") or fallback_source or default_source)
         title = str(item.get("title") or item.get("text") or item.get("query") or "imported event")[:180]
         event = LifeEvent(
@@ -66,7 +72,20 @@ def collect_mobile_imports(target_date: str, dimensions: list[GrowthDimension], 
 
 
 def collect_health_imports(target_date: str, dimensions: list[GrowthDimension], settings: dict) -> list[LifeEvent]:
-    events = collect_json_csv_folder(DATA_DIR / "health", target_date, dimensions, "mi_health", "health")
+    raw_folders = settings.get("folders")
+    if isinstance(raw_folders, list) and raw_folders:
+        folder_paths: list[Path] = []
+        for folder_text in raw_folders:
+            folder = Path(str(folder_text)).expanduser()
+            if not folder.is_absolute():
+                folder = ROOT / folder
+            folder_paths.append(folder)
+    else:
+        folder_paths = [DATA_DIR / "health"]
+
+    events: list[LifeEvent] = []
+    for folder in folder_paths:
+        events.extend(collect_json_csv_folder(folder, target_date, dimensions, "mi_health", "health"))
     for event in events:
         event.source = "mi_health"
         event.topic = ["health", "sleep", "activity"]

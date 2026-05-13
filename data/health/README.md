@@ -1,6 +1,8 @@
 # Health Imports
 
-Put Xiaomi / Mi Fitness day-level health exports here as `.csv` or `.json`.
+Put Xiaomi / Mi Fitness / Zepp Life day-level health exports here as `.csv` or `.json`.
+
+You can scan multiple folders: in `config/tool_switches.json` under `mi_health`, set `"folders": ["data/health", "/path/to/your/export"]` (relative paths are from the project root).
 
 The generator supports these fields:
 

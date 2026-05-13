@@ -19,7 +19,17 @@ except ModuleNotFoundError:  # Python < 3.9 fallback
     except ModuleNotFoundError:
         ZoneInfo = None  # type: ignore[assignment]
 
-from tools.common import DATA_DIR, ROOT, TEMPLATES_DIR, LifeEvent, load_dimensions, load_settings, local_day_bounds, write_json
+from tools.common import (
+    DATA_DIR,
+    ROOT,
+    TEMPLATES_DIR,
+    LifeEvent,
+    dedupe_life_events,
+    load_dimensions,
+    load_settings,
+    local_day_bounds,
+    write_json,
+)
 from tools.llm import chat_completion
 from tools.notifier import send_notifications
 from tools.registry import TOOL_REGISTRY
@@ -87,7 +97,7 @@ def collect_events(settings: dict[str, object], date_text: str) -> list[LifeEven
                     dimensions=["general_input"],
                 )
             )
-    return sorted(events, key=lambda event: event.timestamp)
+    return sorted(dedupe_life_events(events), key=lambda event: event.timestamp)
 
 
 def build_messages(settings: dict[str, object], date_text: str, events: list[LifeEvent]) -> list[dict[str, str]]:

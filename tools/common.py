@@ -184,3 +184,16 @@ def assign_dimensions(event: LifeEvent, dimensions: list[GrowthDimension]) -> li
 def write_json(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def dedupe_life_events(events: list[LifeEvent]) -> list[LifeEvent]:
+    """Drop duplicate visits across collectors (same title + host + path, same day)."""
+    seen: set[tuple[str, str | None, str | None]] = set()
+    out: list[LifeEvent] = []
+    for event in sorted(events, key=lambda item: item.timestamp):
+        key = (event.title, event.url_host, event.url_path)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(event)
+    return out

@@ -5,21 +5,6 @@
   "edge": {
     "enabled": true
   },
-  "safari": {
-    "enabled": false
-  },
-  "bilibili_history": {
-    "enabled": true,
-    "browsers": ["chrome", "edge", "safari"]
-  },
-  "zhihu_history": {
-    "enabled": true,
-    "browsers": ["chrome", "edge", "safari"]
-  },
-  "xiaohongshu_history": {
-    "enabled": true,
-    "browsers": ["chrome", "edge", "safari"]
-  },
   "ticktick_focus": {
     "enabled": true
   },
@@ -45,7 +30,6 @@
     "enabled": true
   },
   "mi_health": {
-    "enabled": true,
-    "folders": ["data/health"]
+    "enabled": true
   }
 }
