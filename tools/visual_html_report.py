@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import html
 import json
+import math
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -83,6 +84,77 @@ def classify_kind(e: LifeEvent) -> str:
     if e.source in ("chrome", "edge", "safari", "firefox") or "_history" in e.source:
         return "browse"
     return "other"
+
+
+def _load_visual_prefs() -> dict[str, object]:
+    path = ROOT / "config" / "settings.json"
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        vr = data.get("visual_report")
+        return dict(vr) if isinstance(vr, dict) else {}
+    except (json.JSONDecodeError, OSError):
+        return {}
+
+
+def productive_weight_for_event(e: LifeEvent) -> float:
+    kind = classify_kind(e)
+    if kind == "focus":
+        return 3.0
+    if kind == "coding":
+        return 3.0
+    if kind == "ai_chat":
+        return 2.0
+    if kind == "bilibili":
+        return 1.0
+    if kind == "browse" and e.importance >= 0.65:
+        return 0.5
+    return 0.0
+
+
+def dimension_productive_weights(day: dt.date, events: list[LifeEvent]) -> defaultdict[str, float]:
+    out: defaultdict[str, float] = defaultdict(float)
+    for e in events:
+        ts = _parse_ts(e.timestamp)
+        if not ts or ts.date() != day:
+            continue
+        w = productive_weight_for_event(e)
+        if w <= 0:
+            continue
+        for d in e.dimensions:
+            out[d] += w
+    return out
+
+
+def kind_switch_count(day: dt.date, events: list[LifeEvent]) -> int:
+    day_events: list[LifeEvent] = []
+    for e in events:
+        ts = _parse_ts(e.timestamp)
+        if not ts or ts.date() != day:
+            continue
+        if classify_kind(e) == "other" and e.source == "cursor" and "AI coding stats" in e.title:
+            continue
+        day_events.append(e)
+    day_events.sort(key=lambda x: x.timestamp)
+    prev: str | None = None
+    n = 0
+    for e in day_events:
+        k = classify_kind(e)
+        if prev is not None and k != prev:
+            n += 1
+        prev = k
+    return n
+
+
+def include_dimension_card(dim_id: str, weight: float) -> bool:
+    if weight >= 2.0:
+        return True
+    if dim_id == "general_input":
+        return weight >= 4.0
+    if dim_id == "health_recovery":
+        return weight >= 2.0
+    return weight >= 1.0
 
 
 def primary_dimension_color(dim_ids: list[str]) -> str:
@@ -208,9 +280,18 @@ def build_period_summaries(day: dt.date, events: list[LifeEvent], dim_name: dict
     return f'<div class="period-grid">{"".join(cards)}</div>'
 
 
-def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthDimension]) -> str:
+def build_html(
+    date_text: str,
+    events: list[LifeEvent],
+    dimensions: list[GrowthDimension],
+    visual_prefs: dict[str, object] | None = None,
+) -> str:
     day = dt.date.fromisoformat(date_text)
     dim_name = {d.id: d.name for d in dimensions}
+    prefs = visual_prefs if visual_prefs is not None else _load_visual_prefs()
+    productive_weights = dimension_productive_weights(day, events)
+    switch_n = kind_switch_count(day, events)
+    focus_goal = max(1, int(prefs.get("focus_goal_minutes", 120)))
 
     focus_blocks: list[dict[str, object]] = []
     cursor_rows: list[LifeEvent] = []
@@ -242,6 +323,7 @@ def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthD
                     "end_min": end_m,
                     "duration": dur,
                     "title": e.title,
+                    "label": str((e.metadata or {}).get("task_title") or e.title),
                     "color": KIND_STYLES["focus"][0],
                     "dim": dim_hex,
                 }
@@ -286,6 +368,27 @@ def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthD
             by_dimension[d] += 1
 
     total_focus_minutes = sum(int((e.metadata or {}).get("duration_minutes") or 0) for e in events if e.source == "ticktick_focus")
+
+    raw_cap = prefs.get("coding_lines_bar_cap")
+    if raw_cap is not None:
+        cap_lines = max(100, int(raw_cap))
+    else:
+        cap_lines = max(2500, int(total_lines_added * 1.2) + 400)
+    code_pct = min(100.0, (total_lines_added / cap_lines) * 100.0) if cap_lines > 0 else 0.0
+
+    r_ring = 26.0
+    circum = 2 * math.pi * r_ring
+    rf = min(1.0, total_focus_minutes / focus_goal)
+    dash_len = circum * rf
+    dash_gap = circum - dash_len
+    ring_svg = (
+        f'<svg class="focus-ring" width="76" height="76" viewBox="0 0 76 76" aria-hidden="true">'
+        f'<circle cx="38" cy="38" r="{r_ring:.1f}" fill="none" stroke="#2d3139" stroke-width="9"/>'
+        f'<circle cx="38" cy="38" r="{r_ring:.1f}" fill="none" stroke="{KIND_STYLES["focus"][0]}" '
+        f'stroke-width="9" stroke-linecap="round" '
+        f'stroke-dasharray="{dash_len:.2f} {dash_gap:.2f}" transform="rotate(-90 38 38)"/>'
+        f"</svg>"
+    )
 
     timeline_rows: list[str] = []
     for e in sorted(events, key=lambda x: x.timestamp):
@@ -336,6 +439,31 @@ def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthD
             f'<div class="seg coding" style="left:{left:.2f}%;width:0.42%;box-shadow:0 0 0 1px {dim_edge};" title="{title_esc}"></div>'
         )
 
+    annotation_labels: list[str] = []
+    ranked_focus = sorted(
+        (
+            b
+            for b in focus_blocks
+            if float(b["start_min"]) >= 0 and int(b.get("duration") or 0) >= 15
+        ),
+        key=lambda b: -int(b.get("duration") or 0),
+    )[:4]
+    for block in ranked_focus:
+        sm = float(block["start_min"])
+        dur = int(block.get("duration") or 0)
+        em = float(block["end_min"]) if block.get("end_min") is not None else sm + dur
+        left = max(0.0, sm / day_minutes * 100)
+        width = max((em - sm) / day_minutes * 100, 0.45)
+        center = left + width / 2
+        hm = int(sm // 60)
+        mm = int(sm % 60)
+        lab = html.escape(str(block.get("label") or block.get("title") or "")[:26])
+        annotation_labels.append(
+            f'<div class="seg-label" style="left:{center:.2f}%"><span class="seg-time">{hm:02d}:{mm:02d} · {dur}′</span>'
+            f'<span class="seg-cap">{lab}</span></div>'
+        )
+    seg_label_html = "".join(annotation_labels)
+
     max_hour_activity = max(max(hour_browse_count), max(hour_bilibili_count), 1)
 
     hour_intensity_cells = []
@@ -371,15 +499,47 @@ def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthD
             f'<div class="hour-bar">{"".join(parts)}</div><div class="hour-label">{h:02d}</div></div>'
         )
 
+    period_html = build_period_summaries(day, events, dim_name)
+
+    kinds_used: set[str] = set()
+    for e in events:
+        ts = _parse_ts(e.timestamp)
+        if ts and ts.date() == day:
+            kinds_used.add(classify_kind(e))
+
+    kind_order = ["focus", "coding", "bilibili", "ai_chat", "browse", "other"]
+    legend_used = "".join(
+        f'<span class="lg"><i style="background:{KIND_STYLES[k][0]}"></i>{html.escape(KIND_STYLES[k][1])}</span>'
+        for k in kind_order
+        if k in kinds_used
+    )
+
+    dim_on_day: set[str] = set()
+    for e in events:
+        ts = _parse_ts(e.timestamp)
+        if not ts or ts.date() != day:
+            continue
+        if classify_kind(e) in ("focus", "coding"):
+            dim_on_day.update(e.dimensions)
+
+    dim_legend_used = "".join(
+        f'<span class="lg"><i style="background:{DIMENSION_STYLES[d][0]}"></i>{html.escape(DIMENSION_STYLES[d][1])}</span>'
+        for d in sorted(dim_on_day)
+        if d in DIMENSION_STYLES
+    )
+
     dim_cards = []
     for did, cnt in by_dimension.most_common():
+        w = productive_weights.get(did, 0.0)
+        if not include_dimension_card(did, w):
+            continue
         color = DIMENSION_STYLES.get(did, DIMENSION_STYLES["general_input"])[0]
         name = dim_name.get(did, did)
         dim_cards.append(
             f'<div class="card dim" style="--c:{color}"><strong>{html.escape(name)}</strong><span>{cnt}</span></div>'
         )
 
-    bilibili_section = ""
+    bilibili_appendix = ""
     if bilibili_titles:
         bl_items = []
         for topic, cnt in topic_counts.most_common():
@@ -388,13 +548,12 @@ def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthD
         nar_html = ""
         if bilibili_narrative:
             nar_html = f'<p class="callout">{bilibili_narrative}</p>'
-        bilibili_section = f"""
-        <section class="panel glow">
-          <h2>B 站 · 看了些什么（关键词归类）</h2>
+        bilibili_appendix = f"""
+          <h3>B 站 · 关键词归类</h3>
           {nar_html}
           <ul class="topic-list">{"".join(bl_items)}</ul>
           <details><summary>标题明细（最多 40 条）</summary><ol>{bl_list}</ol></details>
-        </section>"""
+        """
 
     ctx_card = ""
     ctx_note = ""
@@ -402,9 +561,8 @@ def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthD
         ctx_card = f'<div class="card"><strong>会话上下文占用（均值）</strong><span>{avg_ctx}%</span></div>'
         ctx_note = '<p class="fine-print">contextUsagePercent 来自 Composer 头部，可粗略反映对话体量（不等于「轮次」）。</p>'
 
-    cursor_section = f"""
-        <section class="panel glow">
-          <h2>Cursor · 量化快照</h2>
+    cursor_appendix_body = f"""
+          <h3>Cursor · 量化快照</h3>
           <p class="fine-print">
             本地快照只有 Composer 会话头信息：<strong>精确「对话轮次」未写入 SQLite</strong>；
             下面用会话数与代码改动作为替代指标。
@@ -424,21 +582,46 @@ def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthD
           <ul class="compact-ul">{"".join(f"<li>{html.escape(ws)} · {c}</li>" for ws, c in workspaces.most_common(12))}</ul>
           <h3>模式</h3>
           <ul class="compact-ul">{"".join(f"<li>{html.escape(str(m))} · {c}</li>" for m, c in modes.most_common())}</ul>
-        </section>"""
-
-    legend = "".join(
-        f'<span class="lg"><i style="background:{c}"></i>{html.escape(label)}</span>'
-        for c, label in KIND_STYLES.values()
-    )
-    dim_legend = "".join(
-        f'<span class="lg"><i style="background:{c}"></i>{html.escape(label)}</span>'
-        for c, label in DIMENSION_STYLES.values()
-    )
-
-    period_html = build_period_summaries(day, events, dim_name)
+        """
 
     browse_events = sum(1 for e in events if classify_kind(e) == "browse")
     bili_events = len(bilibili_titles)
+
+    dim_grid_appendix = ""
+    if dim_cards:
+        dim_grid_appendix = (
+            f'<details class="appendix-block"><summary>附录 · 维度事件计数（仅今日有实质痕迹的维度）</summary>'
+            f'<div class="appendix-pad"><div class="stat-grid">{"".join(dim_cards)}</div></div></details>'
+        )
+
+    bilibili_details_block = ""
+    if bilibili_appendix.strip():
+        bilibili_details_block = (
+            f'<details class="appendix-block"><summary>附录 · B 站浏览归类</summary>'
+            f'<div class="appendix-pad">{bilibili_appendix}</div></details>'
+        )
+
+    appendix_core = f"""
+    <details class="appendix-block"><summary>附录 · 四时段概要</summary><div class="appendix-pad">{period_html}</div></details>
+    <details class="appendix-block"><summary>附录 · 按小时 · 事件类型构成</summary><div class="appendix-pad"><div class="hours">{"".join(hour_cells)}</div></div></details>
+    {dim_grid_appendix}
+    <details class="appendix-block"><summary>附录 · Cursor 量化明细</summary><div class="appendix-pad">{cursor_appendix_body}</div></details>
+    {bilibili_details_block}
+    <details class="appendix-block"><summary>附录 · 原始事件列表（{len(timeline_rows)} 条）</summary>
+      <p class="fine-print" style="margin-top:0">核对细节时再展开浏览。</p>
+      <div class="scroll-tl">{"".join(timeline_rows)}</div>
+    </details>
+    <p class="fine-print appendix-meta">全天聚合轨迹约 {len(events)} 条 · 工具类型切换约 {switch_n} 次（相邻事件类型变化）</p>
+    """
+
+    if dim_legend_used:
+        dim_legend_block = (
+            '<div class="caption" style="font-size:0.72rem;color:var(--muted);margin:0.65rem 0 0.25rem">'
+            "今日出现的成长维度（底边色带 · Cursor 竖线）</div>"
+            f'<div class="legend">{dim_legend_used}</div>'
+        )
+    else:
+        dim_legend_block = '<p class="fine-print" style="margin:0.35rem 0 0">今日维度标签较分散；紫色块底边色仍标示滴答任务的维度着色。</p>'
 
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
@@ -616,69 +799,139 @@ def build_html(date_text: str, events: list[LifeEvent], dimensions: list[GrowthD
     .tl-title {{ font-weight: 520; }}
     .tl-meta {{ font-size: 0.74rem; color: var(--muted); }}
     .scroll-tl {{ max-height: min(70vh, 720px); overflow-y: auto; border-radius: 8px; }}
+    .hero-metrics {{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-top: 1rem;
+      align-items: stretch;
+    }}
+    @media (max-width: 520px) {{
+      .hero-metrics {{ grid-template-columns: 1fr; }}
+    }}
+    .hero-card {{
+      background: rgba(36,42,54,0.75);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.85rem 1rem;
+    }}
+    .hero-card .hc-title {{
+      margin: 0 0 0.55rem;
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-weight: 600;
+    }}
+    .ring-row {{ display: flex; align-items: center; gap: 0.85rem; }}
+    .ring-caption {{ font-size: 0.78rem; color: var(--muted); line-height: 1.45; }}
+    .ring-caption strong {{ color: var(--text); }}
+    .progress-track {{
+      height: 12px;
+      border-radius: 999px;
+      background: #2d3139;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin: 0.55rem 0 0.35rem;
+    }}
+    .progress-fill {{
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #2874a6, {KIND_STYLES["coding"][0]});
+      min-width: 4px;
+    }}
+    .coding-caption {{ font-size: 0.78rem; color: var(--muted); }}
+    .timeline-bar.timeline-bar-hero {{ height: 46px; }}
+    .timeline-bar.timeline-bar-hero .seg {{ top: 4px; bottom: 4px; }}
+    .seg-label-row {{
+      position: relative;
+      min-height: 2.15rem;
+      margin-top: 8px;
+      margin-bottom: 0.15rem;
+    }}
+    .seg-label {{
+      position: absolute;
+      top: 0;
+      transform: translateX(-50%);
+      text-align: center;
+      max-width: 46%;
+      font-size: 0.62rem;
+      color: var(--muted);
+      line-height: 1.35;
+    }}
+    .seg-label .seg-time {{ display: block; color: #d7bde2; font-weight: 650; }}
+    .seg-label .seg-cap {{ display: block; opacity: 0.9; }}
+    .appendix.panel .appendix-block {{
+      margin-top: 0.65rem;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.55rem 0.8rem;
+      background: rgba(0,0,0,0.14);
+    }}
+    .appendix.panel .appendix-block:first-of-type {{ margin-top: 0.35rem; }}
+    .appendix.panel summary {{
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--text);
+      font-size: 0.85rem;
+    }}
+    .appendix-pad {{ margin-top: 0.65rem; }}
+    .appendix-meta {{ margin-top: 1rem; opacity: 0.88; }}
   </style>
 </head>
 <body>
   <header class="page-head">
-    <h1>Personal Growth OS · 一日可视化</h1>
-    <p class="sub" style="margin:0">{html.escape(date_text)} · 共 {len(events)} 条事件 · 本地离线生成</p>
-    <div class="deck">
-      <span class="metric-chip">滴答专注合计 <strong>{total_focus_minutes}</strong> 分钟</span>
-      <span class="metric-chip">Composer 会话 <strong>{len(cursor_rows)}</strong></span>
-      <span class="metric-chip">一般浏览 <strong>{browse_events}</strong> · B站 <strong>{bili_events}</strong></span>
+    <h1>今日专注一览</h1>
+    <p class="sub" style="margin:0">{html.escape(date_text)} · 深色宽块 = 滴答专注时长 · 蓝竖线 = Cursor 会话 · 离线生成</p>
+    <div class="hero-metrics">
+      <div class="hero-card">
+        <div class="hc-title">滴答专注 vs 目标（{focus_goal} 分钟）</div>
+        <div class="ring-row">
+          {ring_svg}
+          <div class="ring-caption">
+            今日合计 <strong>{total_focus_minutes}</strong> 分钟<br/>
+            圆环为相对目标的完成比例（封顶显示满环）
+          </div>
+        </div>
+      </div>
+      <div class="hero-card">
+        <div class="hc-title">今日编码增量（lines_added）</div>
+        <div class="coding-caption">条形为相对当日尺度的可视化（cap ≈ {cap_lines} 行），非评价打分。</div>
+        <div class="progress-track"><div class="progress-fill" style="width:{code_pct:.1f}%"></div></div>
+        <div class="coding-caption"><strong style="color:var(--text)">{total_lines_added}</strong> 行新增 · Composer 会话 <strong style="color:var(--text)">{len(cursor_rows)}</strong></div>
+      </div>
     </div>
+    <div class="hero-card soft-note" style="margin-top:0.85rem">
+      <div class="hc-title">主观感受留白（可选）</div>
+      <p class="fine-print" style="margin:0">若想补齐直觉层面的恢复感：今晚睡意可在 😴 / 😐 / 😊 里私下记一笔；身体可在 ⚡ 还行 / 🐢 有点累 里择一。不必写入采集器也能成立。</p>
+    </div>
+    <p class="fine-print" style="margin:0.75rem 0 0">相邻事件类型切换约 <strong style="color:var(--text)">{switch_n}</strong> 次；浏览 <strong>{browse_events}</strong> · B 站 <strong>{bili_events}</strong>（细项见附录）。</p>
   </header>
 
-  <section class="panel">
-    <h2>图例</h2>
-    <div class="caption" style="font-size:0.78rem;color:var(--muted);margin-bottom:0.35rem">活动类型（时间轴圆点 / 小时条）</div>
-    <div class="legend">{legend}</div>
-    <div class="caption" style="font-size:0.78rem;color:var(--muted);margin:0.85rem 0 0.35rem">成长维度（专注块底边色带 · Cursor 竖线描边）</div>
-    <div class="legend">{dim_legend}</div>
-  </section>
-
   <section class="panel glow">
-    <h2>精简时间轴（每 {BLOCK_HOURS} 小时一段，只保留概要）</h2>
+    <h2>全天时间带 · 专注与编程</h2>
     <p class="fine-print" style="margin-top:0">
-      专注块合并时长；编程按 Composer 会话计数；浏览只给站点分布；不放逐 URL 明细。
-    </p>
-    {period_html}
-  </section>
-
-  <section class="panel">
-    <h2>全天条带 · 专注与编程</h2>
-    <p class="fine-print" style="margin-top:0">
-      紫色宽条 = 滴答专注（宽度∝时长，底边颜色 ≈ 主要成长维度）；蓝色竖线 = Cursor 会话锚点。
+      最长的几块专注会在这下面用文字标注起点与时长；把最深的紫色横条当作「今天没白过」的证据即可。
     </p>
     <div class="timeline-stack">
-      <div class="timeline-bar">{"".join(bar_segments)}</div>
+      <div class="timeline-bar timeline-bar-hero">{"".join(bar_segments)}</div>
+      <div class="seg-label-row">{seg_label_html}</div>
     </div>
-    <div class="timeline-stack">
-      <div class="caption">按小时 · 浏览密度（下灰 = 一般浏览，上粉 = B 站），高度为该小时内事件数的相对强度</div>
-      <div class="timeline-hour-strip">{"".join(hour_intensity_cells)}</div>
-    </div>
+    <div class="caption" style="font-size:0.72rem;color:var(--muted);margin:0.85rem 0 0.35rem">今日实际出现的活动类型</div>
+    <div class="legend">{legend_used}</div>
+    {dim_legend_block}
   </section>
 
   <section class="panel">
-    <h2>按小时 · 事件类型构成</h2>
-    <div class="hours">{"".join(hour_cells)}</div>
+    <h2>每小时 · 浏览 / B 站密度</h2>
+    <p class="fine-print" style="margin-top:0">
+      高度 ≈ 该小时内浏览类事件的相对强度，可粗略当作「切换噪声」的热力参考（非精确甘特）。
+    </p>
+    <div class="timeline-hour-strip">{"".join(hour_intensity_cells)}</div>
   </section>
 
-  <section class="panel">
-    <h2>维度 · 事件计数</h2>
-    <div class="stat-grid">{"".join(dim_cards)}</div>
-  </section>
-
-  {cursor_section}
-  {bilibili_section}
-
-  <section class="panel">
-    <h2>原始事件列表（默认折叠）</h2>
-    <p class="fine-print" style="margin-top:0">需要核对细节时再展开；体量大时会较长。</p>
-    <details>
-      <summary>展开全部 {len(timeline_rows)} 条</summary>
-      <div class="scroll-tl">{"".join(timeline_rows)}</div>
-    </details>
+  <section class="panel appendix">
+    <h2>附录 · 计数与明细</h2>
+    <p class="fine-print" style="margin-top:0">睡前默认不必展开；需要核对数字或标题时再打开。</p>
+    {appendix_core}
   </section>
 </body>
 </html>"""

@@ -5,9 +5,12 @@
   "edge": {
     "enabled": true
   },
-  // 滴答清单
   "ticktick_focus": {
     "enabled": true
+  },
+  "xiaohongshu_history": {
+    "enabled": true,
+    "browsers": ["chrome", "edge", "safari"]
   },
   "cursor": {
     "enabled": true

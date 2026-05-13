@@ -75,6 +75,8 @@ def collect_browser_history(
         if only_platforms is not None and platform not in only_platforms:
             continue
         ai_src = detect_ai_chat_source(host)
+        if only_platforms is None and only_ai_threads is None and ai_src:
+            continue
         if only_ai_threads is not None:
             if ai_src != only_ai_threads:
                 continue
@@ -102,7 +104,15 @@ def collect_browser_history(
             metadata={
                 **({"raw_source": browser} if source != browser else {}),
                 **({"platform": platform} if platform else {}),
-                **({"ai_conversation_thread": True, "ai_product": only_ai_threads} if only_ai_threads else {}),
+                **(
+                    {
+                        "ai_conversation_thread": True,
+                        "ai_product": only_ai_threads,
+                        "conversation_thread_title": (title or "")[:300],
+                    }
+                    if only_ai_threads
+                    else {}
+                ),
             },
         )
         event.dimensions = assign_dimensions(event, dimensions)
@@ -147,6 +157,8 @@ def collect_safari_history(
         if only_platforms is not None and platform not in only_platforms:
             continue
         ai_src = detect_ai_chat_source(host)
+        if only_platforms is None and only_ai_threads is None and ai_src:
+            continue
         if only_ai_threads is not None:
             if ai_src != only_ai_threads:
                 continue
@@ -178,7 +190,15 @@ def collect_safari_history(
             metadata={
                 **({"raw_source": "safari"} if source != "safari" else {}),
                 **({"platform": platform} if platform else {}),
-                **({"ai_conversation_thread": True, "ai_product": only_ai_threads} if only_ai_threads else {}),
+                **(
+                    {
+                        "ai_conversation_thread": True,
+                        "ai_product": only_ai_threads,
+                        "conversation_thread_title": (title or "")[:300],
+                    }
+                    if only_ai_threads
+                    else {}
+                ),
             },
         )
         event.dimensions = assign_dimensions(event, dimensions)
@@ -240,7 +260,7 @@ def _browsers_for_ai_collect(settings: dict) -> list[str]:
     browsers = settings.get("browsers")
     if isinstance(browsers, list) and browsers:
         return [str(b).lower() for b in browsers]
-    return ["chrome", "edge"]
+    return ["chrome", "edge", "safari"]
 
 
 def collect_ai_conversation_visits(
@@ -250,7 +270,7 @@ def collect_ai_conversation_visits(
     dimensions: list[GrowthDimension],
     settings: dict,
 ) -> list[LifeEvent]:
-    """从浏览器历史抓取指定 AI 的对话线程页（以标签页标题为对话标题，非整站浏览）。"""
+    """从浏览器历史抓取指定 AI 的对话线程页（历史记录标题 = 对话标题；不含首页/设置等泛浏览）。默认 Chrome、Edge、Safari。"""
     merged = {**settings, "only_ai_threads": ai_source}
     events: list[LifeEvent] = []
     for browser in _browsers_for_ai_collect(settings):

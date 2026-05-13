@@ -63,6 +63,13 @@ def build_report_context(events: list[LifeEvent], dimensions: list[GrowthDimensi
     if focus_minutes or information_flow_events:
         focus_purity = round(focus_minutes / max(focus_minutes + len(information_flow_events) * 5, 1), 2)
 
+    xhs_events = [
+        event
+        for event in events
+        if event.source == "xiaohongshu_history" or event.metadata.get("platform") == "xiaohongshu"
+    ]
+    xhs_titles = {event.title for event in xhs_events if event.title}
+
     return {
         "metrics": {
             "total_events": total,
@@ -102,5 +109,10 @@ def build_report_context(events: list[LifeEvent], dimensions: list[GrowthDimensi
             ),
             "focus_purity_estimate": focus_purity,
             "note": "Directional only: focus minutes / (focus minutes + information-flow events * 5).",
+        },
+        "xiaohongshu_browsing": {
+            "records": len(xhs_events),
+            "unique_titles": len(xhs_titles),
+            "note": "来自浏览器历史中小红书域名的去重标题条数；需在 tool_switches 中启用 xiaohongshu_history。",
         },
     }
