@@ -10,15 +10,15 @@
   },
   "bilibili_history": {
     "enabled": true,
-    "browsers": ["chrome", "edge", "safari"]
+    "browsers": ["edge", "chrome"]
   },
   "zhihu_history": {
     "enabled": true,
-    "browsers": ["chrome", "edge", "safari"]
+    "browsers": ["edge", "chrome"]
   },
   "xiaohongshu_history": {
     "enabled": true,
-    "browsers": ["chrome", "edge", "safari"]
+    "browsers": ["edge", "chrome"]
   },
   "ticktick_focus": {
     "enabled": true
@@ -30,13 +30,16 @@
     "enabled": false
   },
   "chatgpt": {
-    "enabled": true
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
   },
   "doubao": {
-    "enabled": true
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
   },
   "deepseek": {
-    "enabled": true
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
   },
   "manual_imports": {
     "enabled": true

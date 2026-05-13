@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sqlite3
 from pathlib import Path
 
 from tools.common import (
@@ -260,7 +261,8 @@ def _browsers_for_ai_collect(settings: dict) -> list[str]:
     browsers = settings.get("browsers")
     if isinstance(browsers, list) and browsers:
         return [str(b).lower() for b in browsers]
-    return ["chrome", "edge", "safari"]
+    # Safari 历史库常受 TCC 限制且易未登录 AI；默认改用 Edge + Chrome。
+    return ["edge", "chrome"]
 
 
 def collect_ai_conversation_visits(
@@ -270,14 +272,21 @@ def collect_ai_conversation_visits(
     dimensions: list[GrowthDimension],
     settings: dict,
 ) -> list[LifeEvent]:
-    """从浏览器历史抓取指定 AI 的对话线程页（历史记录标题 = 对话标题；不含首页/设置等泛浏览）。默认 Chrome、Edge、Safari。"""
+    """从浏览器历史抓取指定 AI 的对话线程页（历史记录标题 = 对话标题；不含首页/设置等泛浏览）。
+
+    浏览器列表由 settings[\"browsers\"] 决定；未配置时默认 Edge → Chrome（不使用 Safari，避免未授权 History.db）。
+    单个浏览器读取失败时不影响其它浏览器。
+    """
     merged = {**settings, "only_ai_threads": ai_source}
     events: list[LifeEvent] = []
     for browser in _browsers_for_ai_collect(settings):
-        if browser == "chrome":
-            events.extend(collect_chrome(start, end, dimensions, merged))
-        elif browser == "edge":
-            events.extend(collect_edge(start, end, dimensions, merged))
-        elif browser == "safari":
-            events.extend(collect_safari(start, end, dimensions, merged))
+        try:
+            if browser == "chrome":
+                events.extend(collect_chrome(start, end, dimensions, merged))
+            elif browser == "edge":
+                events.extend(collect_edge(start, end, dimensions, merged))
+            elif browser == "safari":
+                events.extend(collect_safari(start, end, dimensions, merged))
+        except (OSError, sqlite3.DatabaseError):
+            continue
     return events

@@ -10,7 +10,7 @@
   },
   "xiaohongshu_history": {
     "enabled": true,
-    "browsers": ["chrome", "edge", "safari"]
+    "browsers": ["edge", "chrome"]
   },
   "cursor": {
     "enabled": true
@@ -19,13 +19,16 @@
     "enabled": false
   },
   "chatgpt": {
-    "enabled": true
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
   },
   "doubao": {
-    "enabled": true
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
   },
   "deepseek": {
-    "enabled": true
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
   },
   "manual_imports": {
     "enabled": true
@@ -34,6 +37,7 @@
     "enabled": true
   },
   "mi_health": {
-    "enabled": true
+    "enabled": true,
+    "folders": ["data/health"]
   }
 }

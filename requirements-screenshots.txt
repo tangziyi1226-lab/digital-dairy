@@ -1,2 +1,0 @@
-# Optional: mobile screenshots appended to daily summary markdown (run_daily / generate_visual_report --append-summary)
-playwright>=1.41.0

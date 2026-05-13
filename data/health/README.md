@@ -1,17 +1,34 @@
 # Health Imports
 
-Put Xiaomi / Mi Fitness / Zepp Life day-level health exports here as `.csv` or `.json`.
+把 **小米运动健康**（或 Zepp Life 等与手环同步的 App）导出的每日汇总放到这里，支持 `.csv` / `.json`。
 
-You can scan multiple folders: in `config/tool_switches.json` under `mi_health`, set `"folders": ["data/health", "/path/to/your/export"]` (relative paths are from the project root).
+本项目 **不接蓝牙、也不登录小米账号**：只要能生成「某一天一行」的文件即可。
 
-The generator supports these fields:
+## 如何拿到数据
+
+1. **手机 App（小米运动健康）**  
+   打开 **我的** → **设置** → 查找 **隐私 / 数据共享 / 导出数据**（不同版本文案略有差异）。若有「导出运动健康数据」，按提示导出后，用表格软件打开，整理成下列字段之一即可。  
+   若没有导出入口：可在 **睡眠 / 步数** 详情页 **手动抄一行** 到下面的模板 CSV（睡前跑一次日报也够）。
+
+2. **文件命名提示**  
+   若表内没有 `date` 列，可把文件命名为带日期的名字，例如 `health-2026-05-13.csv`，系统会从文件名推断日期。
+
+3. **多目录**  
+   在 `config/tool_switches.json` 的 `mi_health` 里设置 `"folders": ["data/health", "/某路径/导出文件夹"]`（相对路径相对于项目根目录）。
+
+## 推荐模板（CSV）
 
 ```csv
 date,sleep_minutes,steps,active_minutes,workout_minutes,distance_km,calories
 2026-05-12,420,8632,48,32,5.4,420
 ```
 
-Or JSON:
+## 兼容的常见列名（中英）
+
+程序会自动兼容类似列名，例如：`日期`、`步数`、`睡眠时长(小时)`、`睡眠时长(分钟)`、`活动时长` 等。  
+「睡眠时长」若未标明单位：数值 **≤24** 会按 **小时** 理解；**>48** 会按 **分钟** 理解（可按需在表格里改成明确的 `睡眠时长(小时)` 列）。
+
+## JSON 示例
 
 ```json
 [
@@ -27,4 +44,4 @@ Or JSON:
 ]
 ```
 
-Recommended privacy boundary: import day-level summaries only. You do not need to import GPS routes, heart-rate series, or raw minute-level data for the daily narrative.
+建议只导入 **日级汇总**，不必导入 GPS、逐分钟心率等明细。
