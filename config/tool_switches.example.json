@@ -1,0 +1,35 @@
+{
+  "chrome": {
+    "enabled": true
+  },
+  "edge": {
+    "enabled": true
+  },
+  "ticktick_focus": {
+    "enabled": true
+  },
+  "cursor": {
+    "enabled": true
+  },
+  "vscode": {
+    "enabled": false
+  },
+  "chatgpt": {
+    "enabled": true
+  },
+  "doubao": {
+    "enabled": true
+  },
+  "deepseek": {
+    "enabled": true
+  },
+  "manual_imports": {
+    "enabled": true
+  },
+  "mobile_imports": {
+    "enabled": true
+  },
+  "mi_health": {
+    "enabled": true
+  }
+}

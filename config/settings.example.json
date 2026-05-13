@@ -1,0 +1,47 @@
+{
+  "user": {
+    "display_name": "xxx",
+    "nickname": "xxx"
+  },
+  "timezone": "Asia/Shanghai",
+  "schedule": {
+    "time": "11:00"
+  },
+  "messages": {
+    "daily_opening_hint": "{opening_time} 了，{nickname} 辛苦了。你今天做了很多事情，可以慢慢放松下来，准备休息了。"
+  },
+  "replies": {
+    "poll_minutes": 10
+  },
+  "api": {
+    "provider": "deepseek",
+    "base_url": "https://api.deepseek.com",
+    "model": "deepseek-chat",
+    "api_key_env": "DEEPSEEK_API_KEY",
+    "api_key": "PUT_YOUR_KEY_HERE_FOR_LOCAL_ONLY",
+    "temperature": 0.55,
+    "max_tokens": 4200
+  },
+  "templates": {
+    "daily_prompt": "templates/daily_summary_prompt.md"
+  },
+  "tool_switches_path": "config/tool_switches.json",
+  "data_retention": {
+    "daily_summaries_keep_days": 3
+  },
+  "notifications": {
+    "email": {
+      "enabled": false,
+      "smtp_host": "smtp.example.com",
+      "smtp_port": 465,
+      "username": "you@example.com",
+      "password": "PUT_APP_PASSWORD_HERE",
+      "from": "you@example.com",
+      "to": "you@example.com"
+    },
+    "wechat": {
+      "enabled": false,
+      "webhook_url": "PUT_WECHAT_WORK_BOT_WEBHOOK_HERE"
+    }
+  }
+}
