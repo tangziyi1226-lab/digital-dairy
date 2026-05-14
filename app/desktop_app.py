@@ -43,7 +43,7 @@ def _bootstrap_tk_env() -> None:
 _bootstrap_tk_env()
 
 import tkinter as tk
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import colorchooser, filedialog, messagebox, scrolledtext, ttk
 
 _APP_DIR = Path(__file__).resolve().parent
 if str(_APP_DIR) not in sys.path:
@@ -195,6 +195,12 @@ class DigitalDairyDesktop(tk.Tk):
             self._project_var = tk.StringVar(value=str(self._project_root) if self._project_root else "未选择")
 
         self._status_var = tk.StringVar(value="就绪")
+        self._theme_start_var = tk.StringVar(value=self._state.get("theme_start", "#7FA8FF"))
+        self._theme_end_var = tk.StringVar(value=self._state.get("theme_end", "#9DE7D7"))
+        self._gradient_canvas: tk.Canvas | None = None
+        self._log: scrolledtext.ScrolledText | None = None
+        self._style = ttk.Style(self)
+        self._init_native_theme()
 
         self._build_ui()
         self._refresh_settings_tab()
@@ -204,39 +210,140 @@ class DigitalDairyDesktop(tk.Tk):
     def _writable_home_display(self) -> str:
         return f"{self._writable_root}（本应用数据目录，自动使用）"
 
-    def _build_ui(self) -> None:
-        nb = ttk.Notebook(self)
-        nb.pack(fill="both", expand=True, padx=10, pady=10)
+    def _init_native_theme(self) -> None:
+        """优先使用 macOS 原生 Aqua 主题。"""
+        try:
+            self._style.theme_use("aqua")
+        except tk.TclError:
+            pass
 
-        self._home = ttk.Frame(nb, padding=12)
-        self._settings_host = ttk.Frame(nb)
-        nb.add(self._home, text="首页")
-        nb.add(self._settings_host, text="设置")
+    @staticmethod
+    def _normalize_hex_color(value: str, fallback: str) -> str:
+        text = (value or "").strip()
+        if len(text) == 7 and text.startswith("#"):
+            try:
+                int(text[1:], 16)
+                return text.upper()
+            except ValueError:
+                return fallback
+        return fallback
 
-        row = ttk.Frame(self._home)
-        row.pack(fill="x", pady=(0, 8))
-        label = "数据与配置目录：" if self._bundled else "项目根目录："
-        ttk.Label(row, text=label).pack(side="left")
-        ttk.Entry(row, textvariable=self._project_var, state="readonly").pack(side="left", fill="x", expand=True, padx=(6, 6))
-        if self._bundled:
-            ttk.Label(row, text="已自动", foreground="gray").pack(side="right")
+    @staticmethod
+    def _hex_to_rgb(value: str) -> tuple[int, int, int]:
+        value = value.lstrip("#")
+        return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))
+
+    @staticmethod
+    def _rgb_to_hex(rgb: tuple[int, int, int]) -> str:
+        return "#{:02X}{:02X}{:02X}".format(*rgb)
+
+    def _mix_color(self, left: str, right: str, ratio: float) -> str:
+        l = self._hex_to_rgb(left)
+        r = self._hex_to_rgb(right)
+        ratio = max(0.0, min(1.0, ratio))
+        mixed = tuple(round(a + (b - a) * ratio) for a, b in zip(l, r))
+        return self._rgb_to_hex(mixed)
+
+    def _current_theme_colors(self) -> tuple[str, str]:
+        start = self._normalize_hex_color(self._theme_start_var.get(), "#7FA8FF")
+        end = self._normalize_hex_color(self._theme_end_var.get(), "#9DE7D7")
+        self._theme_start_var.set(start)
+        self._theme_end_var.set(end)
+        return start, end
+
+    def _save_theme_state(self) -> None:
+        self._state["theme_start"] = self._theme_start_var.get()
+        self._state["theme_end"] = self._theme_end_var.get()
+        _save_state(self._state)
+
+    def _draw_gradient_preview(self) -> None:
+        if self._gradient_canvas is None:
+            return
+        canvas = self._gradient_canvas
+        canvas.delete("all")
+        width = max(canvas.winfo_width(), 1)
+        height = max(canvas.winfo_height(), 1)
+        start, end = self._current_theme_colors()
+        for x in range(width):
+            ratio = x / max(width - 1, 1)
+            color = self._mix_color(start, end, ratio)
+            canvas.create_line(x, 0, x, height, fill=color)
+        canvas.create_rectangle(0, 0, width, height, outline=self._mix_color("#FFFFFF", "#C6CEDA", 0.4), width=1)
+
+    def _pick_theme_color(self, kind: str) -> None:
+        current = self._theme_start_var.get() if kind == "start" else self._theme_end_var.get()
+        _, picked = colorchooser.askcolor(color=current, title="选择渐变颜色")
+        if not picked:
+            return
+        if kind == "start":
+            self._theme_start_var.set(picked.upper())
         else:
-            ttk.Button(row, text="选择…", command=self._choose_project).pack(side="right")
+            self._theme_end_var.set(picked.upper())
+        self._save_theme_state()
+        self._draw_gradient_preview()
 
-        btn_row = ttk.Frame(self._home)
-        btn_row.pack(fill="x", pady=8)
-        ttk.Button(btn_row, text="生成今日日报", command=self._run_daily).pack(side="left", padx=(0, 8))
-        ttk.Button(btn_row, text="仅采集（Dry Run）", command=self._run_dry).pack(side="left", padx=(0, 8))
-        ttk.Button(btn_row, text="打开今日总结", command=self._open_summary).pack(side="left", padx=(0, 8))
+    def _build_ui(self) -> None:
+        root = ttk.Frame(self, padding=12)
+        root.pack(fill="both", expand=True)
+
+        split = ttk.Panedwindow(root, orient="horizontal")
+        split.pack(fill="both", expand=True)
+
+        left = ttk.Frame(split, padding=12)
+        right = ttk.Frame(split, padding=8)
+        split.add(left, weight=1)
+        split.add(right, weight=2)
+
+        ttk.Label(left, text=APP_NAME).pack(anchor="w")
+        ttk.Label(left, text="macOS 原生组件工作台").pack(anchor="w", pady=(2, 10))
+
+        project_frame = ttk.LabelFrame(left, text="目录", padding=10)
+        project_frame.pack(fill="x", pady=(0, 12))
+        label = "数据与配置目录：" if self._bundled else "项目根目录："
+        ttk.Label(project_frame, text=label).pack(anchor="w")
+        ttk.Entry(project_frame, textvariable=self._project_var, state="readonly").pack(fill="x", pady=(6, 8))
+        if self._bundled:
+            ttk.Label(project_frame, text="安装版已自动定位").pack(anchor="w")
+        else:
+            ttk.Button(project_frame, text="选择目录", command=self._choose_project).pack(anchor="e")
+
+        actions = ttk.LabelFrame(left, text="快捷操作", padding=10)
+        actions.pack(fill="x", pady=(0, 12))
+        ttk.Button(actions, text="生成今日日报", command=self._run_daily).pack(fill="x", pady=(0, 8))
+        ttk.Button(actions, text="仅采集（Dry Run）", command=self._run_dry).pack(fill="x", pady=(0, 8))
+        ttk.Button(actions, text="打开今日总结", command=self._open_summary).pack(fill="x", pady=(0, 8))
         finder_label = "在 Finder 中打开数据目录" if self._bundled else "在 Finder 中打开项目"
-        ttk.Button(btn_row, text=finder_label, command=self._open_finder).pack(side="left")
+        ttk.Button(actions, text=finder_label, command=self._open_finder).pack(fill="x")
 
-        ttk.Label(self._home, textvariable=self._status_var).pack(anchor="w", pady=(4, 4))
+        theme_frame = ttk.LabelFrame(left, text="渐变主题", padding=10)
+        theme_frame.pack(fill="x")
+        self._gradient_canvas = tk.Canvas(theme_frame, height=82, bd=0, highlightthickness=0)
+        self._gradient_canvas.pack(fill="x", pady=(0, 8))
+        self._gradient_canvas.bind("<Configure>", lambda _event: self._draw_gradient_preview())
+        picker_row = ttk.Frame(theme_frame)
+        picker_row.pack(fill="x")
+        ttk.Button(picker_row, text="起始色", command=lambda: self._pick_theme_color("start")).pack(
+            side="left", fill="x", expand=True, padx=(0, 5)
+        )
+        ttk.Button(picker_row, text="结束色", command=lambda: self._pick_theme_color("end")).pack(
+            side="left", fill="x", expand=True, padx=(5, 0)
+        )
 
-        log_frame = ttk.LabelFrame(self._home, text="运行输出", padding=6)
-        log_frame.pack(fill="both", expand=True, pady=(8, 0))
-        self._log = scrolledtext.ScrolledText(log_frame, height=18, wrap="word", font=("Menlo", 11))
+        notebook = ttk.Notebook(right)
+        notebook.pack(fill="both", expand=True)
+        log_tab = ttk.Frame(notebook, padding=10)
+        self._settings_host = ttk.Frame(notebook)
+        notebook.add(log_tab, text="运行日志")
+        notebook.add(self._settings_host, text="设置")
+
+        status_box = ttk.Frame(log_tab, padding=(4, 4))
+        status_box.pack(fill="x", pady=(0, 10))
+        ttk.Label(status_box, text="状态：").pack(side="left")
+        ttk.Label(status_box, textvariable=self._status_var).pack(side="left", padx=(6, 0))
+
+        self._log = scrolledtext.ScrolledText(log_tab, height=18, wrap="word", font=("Menlo", 11))
         self._log.pack(fill="both", expand=True)
+        self._draw_gradient_preview()
 
     def _log_line(self, text: str) -> None:
         self._log.insert("end", text + "\n")
