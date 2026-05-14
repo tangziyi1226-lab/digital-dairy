@@ -145,15 +145,27 @@ launchctl load ~/Library/LaunchAgents/com.personal-growth-os.inbox.plist
 
 ## macOS 桌面应用 + DMG 打包
 
-项目提供带窗口的桌面入口（`app/desktop_app.py`）。**从 DMG 安装后**：应用包内自带 `scripts/`、`tools/` 等运行代码，配置与数据默认在 `~/Documents/DigitalDairy/`，**无需再选择项目目录**即可生成日报。从源码运行时仍可手动选择其它 Git 克隆目录。另有可选的状态栏脚本 `app/status_bar.py`（需自行 `pip install rumps`），**默认 DMG 只打桌面版**。
+默认桌面端已改为 **原生 SwiftUI + AppKit 材质**（`macOS/DigitalDairyNative`）：使用 `NSVisualEffectView` 与系统 `Material` 叠加渐变，观感接近 macOS 的毛玻璃/液态层次；业务仍通过本机 `python3` 调用仓库内 `scripts/run_daily.py`（与原先逻辑一致）。
 
-### 1) 安装打包依赖（仅首次）
+**从 DMG 安装后**：`Contents/Resources/app-runtime/` 内含 `scripts/`、`tools/` 等；配置与数据仍在 `~/Documents/DigitalDairy/`，**无需选择项目目录**。从源码调试时，应用会尝试自动识别仓库根目录，也可在界面里手动选择。
+
+旧版 **Tkinter 桌面**（`app/desktop_app.py`）仍保留作参考。旧版 **py2app** 打包脚本见 `scripts/build_macos_dmg_py2app.sh`。
+
+另有可选的状态栏脚本 `app/status_bar.py`（需自行 `pip install rumps`）。
+
+### 1) 构建 `.dmg`（SwiftUI 原生壳 + Python 运行时）
+
+需要本机已安装 **Xcode Command Line Tools** 或 **Xcode**（提供 `swift`）。
 
 ```bash
 bash scripts/build_macos_dmg.sh
 ```
 
-脚本会自动在项目目录创建（或复用）`.venv-macos-app` 并安装打包依赖，然后生成 `.app` 和 `.dmg`。
+该脚本会：
+
+- 用 SwiftPM 编译 `macOS/DigitalDairyNative`
+- 将可执行文件、`Support/Info.plist` 与 `app-runtime/` 打进 `Digital Dairy.app`
+- 生成 `dist/Digital-Dairy.dmg`
 
 生成日报时，安装版会用系统 `python3`（或你放在 `PATH` 里的解释器）执行包内脚本；若需 `markdown` / `playwright` 等可选依赖，请在本机执行：
 
@@ -161,13 +173,7 @@ bash scripts/build_macos_dmg.sh
 python3 -m pip install -r requirements.txt
 ```
 
-### 2) 构建 `.dmg`
-
-```bash
-bash scripts/build_macos_dmg.sh
-```
-
-生成物在：
+### 2) 生成物
 
 - `dist/Digital Dairy.app`
 - `dist/Digital-Dairy.dmg`
@@ -175,17 +181,25 @@ bash scripts/build_macos_dmg.sh
 ### 3) 桌面应用功能
 
 - **DMG 安装版**：数据与配置在 `~/Documents/DigitalDairy`（含 `state.json`），首次启动会自动从模板生成 `settings.json` / `tool_switches.json` 等；无需选择项目目录。
-- **源码运行**：若未选手动目录，会尝试自动使用当前仓库根目录；也可在首页「选择…」指向其它克隆。
-- 生成今日日报 / 仅采集（Dry Run），输出显示在窗口内；「设置」标签页编辑配置。
+- **源码 / 调试运行**：在 Xcode 中打开 `macOS/DigitalDairyNative/Package.swift`，或执行 `cd macOS/DigitalDairyNative && swift run`；若未识别到仓库根，可在界面「选择项目目录…」指向克隆路径。
+- 生成今日日报 / 仅采集（Dry Run），日志在窗口内展示；「配置文件」侧栏提供 `settings.json` / `tool_switches.json` 的文本编辑与保存（替代原先 Tk 表单）。
 - 打开今日总结、在 Finder 中打开数据目录（安装版）或项目目录（开发版）。
 
-本地调试桌面版：
+旧版 Tk 入口（仍可用）：
 
 ```bash
 python3 app/desktop_app.py
 ```
 
-> 说明：日报任务会优先使用项目内 `.venv/bin/python3`，否则使用系统 `python3`。
+> 说明：日报任务会优先使用项目内 `.venv/bin/python3`，否则使用系统 `python3`（通过 `/usr/bin/env python3` 调用）。
+
+### 4) 旧版 py2app（Tk 壳）打包
+
+若仍需 Tkinter + py2app 的 `.app`：
+
+```bash
+bash scripts/build_macos_dmg_py2app.sh
+```
 
 ## 问答与 Inbox
 

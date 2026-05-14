@@ -35,6 +35,7 @@ __pycache__/
 *.pyc
 .venv/
 .macos-app-runtime/
+macOS/DigitalDairyNative/.build/
 .DS_Store
 .history/
 outputs/

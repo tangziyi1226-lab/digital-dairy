@@ -1,0 +1,57 @@
+{
+  "chrome": {
+    "enabled": true
+  },
+  "edge": {
+    "enabled": true
+  },
+  "ticktick_focus": {
+    "enabled": true
+  },
+  "xiaohongshu_history": {
+    "enabled": true,
+    "browsers": [
+      "edge",
+      "chrome"
+    ]
+  },
+  "cursor": {
+    "enabled": true
+  },
+  "vscode": {
+    "enabled": true
+  },
+  "chatgpt": {
+    "enabled": true,
+    "browsers": [
+      "edge",
+      "chrome"
+    ]
+  },
+  "doubao": {
+    "enabled": true,
+    "browsers": [
+      "edge",
+      "chrome"
+    ]
+  },
+  "deepseek": {
+    "enabled": true,
+    "browsers": [
+      "edge",
+      "chrome"
+    ]
+  },
+  "manual_imports": {
+    "enabled": true
+  },
+  "mobile_imports": {
+    "enabled": true
+  },
+  "mi_health": {
+    "enabled": true,
+    "folders": [
+      "data/health"
+    ]
+  }
+}

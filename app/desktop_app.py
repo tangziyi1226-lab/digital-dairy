@@ -166,8 +166,8 @@ class DigitalDairyDesktop(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title(APP_NAME)
-        self.geometry("720x680")
-        self.minsize(640, 560)
+        self.geometry("980x700")
+        self.minsize(860, 620)
 
         self._state = _load_state()
         self._busy = False
@@ -200,7 +200,10 @@ class DigitalDairyDesktop(tk.Tk):
         self._gradient_canvas: tk.Canvas | None = None
         self._log: scrolledtext.ScrolledText | None = None
         self._style = ttk.Style(self)
+        self._panel_var = tk.StringVar(value="run")
+        self._run_panel: ttk.Frame | None = None
         self._init_native_theme()
+        self._init_macos_window_style()
 
         self._build_ui()
         self._refresh_settings_tab()
@@ -214,6 +217,13 @@ class DigitalDairyDesktop(tk.Tk):
         """优先使用 macOS 原生 Aqua 主题。"""
         try:
             self._style.theme_use("aqua")
+        except tk.TclError:
+            pass
+
+    def _init_macos_window_style(self) -> None:
+        """在 macOS 上应用系统窗口样式（若 Tcl/Tk 支持）。"""
+        try:
+            self.tk.call("tk::unsupported::MacWindowStyle", "style", self._w, "document", "none")
         except tk.TclError:
             pass
 
@@ -282,9 +292,26 @@ class DigitalDairyDesktop(tk.Tk):
         self._save_theme_state()
         self._draw_gradient_preview()
 
+    def _show_panel(self) -> None:
+        if self._run_panel is None:
+            return
+        selected = self._panel_var.get()
+        self._run_panel.pack_forget()
+        self._settings_host.pack_forget()
+        if selected == "settings":
+            self._refresh_settings_tab()
+            self._settings_host.pack(fill="both", expand=True)
+        else:
+            self._run_panel.pack(fill="both", expand=True)
+
     def _build_ui(self) -> None:
-        root = ttk.Frame(self, padding=12)
+        root = ttk.Frame(self, padding=10)
         root.pack(fill="both", expand=True)
+
+        top = ttk.Frame(root)
+        top.pack(fill="x", pady=(0, 8))
+        ttk.Label(top, text=f"{APP_NAME} 偏好设置").pack(side="left")
+        ttk.Label(top, textvariable=self._status_var).pack(side="right")
 
         split = ttk.Panedwindow(root, orient="horizontal")
         split.pack(fill="both", expand=True)
@@ -292,10 +319,14 @@ class DigitalDairyDesktop(tk.Tk):
         left = ttk.Frame(split, padding=12)
         right = ttk.Frame(split, padding=8)
         split.add(left, weight=1)
-        split.add(right, weight=2)
+        split.add(right, weight=3)
 
-        ttk.Label(left, text=APP_NAME).pack(anchor="w")
-        ttk.Label(left, text="macOS 原生组件工作台").pack(anchor="w", pady=(2, 10))
+        nav = ttk.LabelFrame(left, text="导航", padding=8)
+        nav.pack(fill="x", pady=(0, 10))
+        ttk.Radiobutton(nav, text="运行与日志", variable=self._panel_var, value="run", command=self._show_panel).pack(
+            anchor="w", pady=(0, 4)
+        )
+        ttk.Radiobutton(nav, text="应用设置", variable=self._panel_var, value="settings", command=self._show_panel).pack(anchor="w")
 
         project_frame = ttk.LabelFrame(left, text="目录", padding=10)
         project_frame.pack(fill="x", pady=(0, 12))
@@ -329,21 +360,18 @@ class DigitalDairyDesktop(tk.Tk):
             side="left", fill="x", expand=True, padx=(5, 0)
         )
 
-        notebook = ttk.Notebook(right)
-        notebook.pack(fill="both", expand=True)
-        log_tab = ttk.Frame(notebook, padding=10)
-        self._settings_host = ttk.Frame(notebook)
-        notebook.add(log_tab, text="运行日志")
-        notebook.add(self._settings_host, text="设置")
+        self._run_panel = ttk.Frame(right, padding=10)
+        self._settings_host = ttk.Frame(right)
 
-        status_box = ttk.Frame(log_tab, padding=(4, 4))
+        status_box = ttk.Frame(self._run_panel, padding=(4, 4))
         status_box.pack(fill="x", pady=(0, 10))
-        ttk.Label(status_box, text="状态：").pack(side="left")
+        ttk.Label(status_box, text="当前任务状态：").pack(side="left")
         ttk.Label(status_box, textvariable=self._status_var).pack(side="left", padx=(6, 0))
 
-        self._log = scrolledtext.ScrolledText(log_tab, height=18, wrap="word", font=("Menlo", 11))
+        self._log = scrolledtext.ScrolledText(self._run_panel, height=18, wrap="word", font=("Menlo", 11))
         self._log.pack(fill="both", expand=True)
         self._draw_gradient_preview()
+        self._show_panel()
 
     def _log_line(self, text: str) -> None:
         self._log.insert("end", text + "\n")

@@ -1,0 +1,54 @@
+{
+  "chrome": {
+    "enabled": true
+  },
+  "edge": {
+    "enabled": true
+  },
+  "safari": {
+    "enabled": false
+  },
+  "bilibili_history": {
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
+  },
+  "zhihu_history": {
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
+  },
+  "xiaohongshu_history": {
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
+  },
+  "ticktick_focus": {
+    "enabled": true
+  },
+  "cursor": {
+    "enabled": true
+  },
+  "vscode": {
+    "enabled": false
+  },
+  "chatgpt": {
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
+  },
+  "doubao": {
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
+  },
+  "deepseek": {
+    "enabled": true,
+    "browsers": ["edge", "chrome"]
+  },
+  "manual_imports": {
+    "enabled": true
+  },
+  "mobile_imports": {
+    "enabled": true
+  },
+  "mi_health": {
+    "enabled": true,
+    "folders": ["data/health"]
+  }
+}
