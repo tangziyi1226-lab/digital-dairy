@@ -14,6 +14,8 @@ final class AppModel: ObservableObject {
         case prefsCollectors = "采集数据源"
         case prefsNotifications = "通知"
         case prefsAdvanced = "高级与保留"
+        case prefsGrowthDimensions = "成长维度"
+        case prefsTemplates = "模版设置"
         case appearance = "外观与主题"
         case about = "关于"
 
@@ -29,6 +31,8 @@ final class AppModel: ObservableObject {
             case .prefsCollectors: return "arrow.down.doc"
             case .prefsNotifications: return "bell"
             case .prefsAdvanced: return "slider.horizontal.3"
+            case .prefsGrowthDimensions: return "leaf.fill"
+            case .prefsTemplates: return "doc.richtext"
             case .appearance: return "paintpalette"
             case .about: return "info.circle"
             }
@@ -37,7 +41,9 @@ final class AppModel: ObservableObject {
         var sidebarSection: Int {
             switch self {
             case .run, .dailyReport, .charts: return 0
-            case .prefsGeneral, .prefsApi, .prefsCollectors, .prefsNotifications, .prefsAdvanced: return 1
+            case .prefsGeneral, .prefsApi, .prefsCollectors, .prefsNotifications, .prefsAdvanced,
+                 .prefsGrowthDimensions, .prefsTemplates:
+                return 1
             case .appearance, .about: return 2
             }
         }
@@ -70,6 +76,8 @@ final class AppModel: ObservableObject {
     @Published var appSettings: AppSettings?
     @Published var toolSwitches: [String: ToolSwitchRow] = [:]
     @Published var settingsFormError: String?
+    @Published var growthDimensionsFile: GrowthDimensionsFile?
+    @Published var growthDimensionsError: String?
     @Published var configurationEpoch: Int = 0
     @Published var alertTitle: String = ""
     @Published var alertMessage: String = ""
@@ -142,6 +150,8 @@ final class AppModel: ObservableObject {
         guard let root = settingsTargetRoot() else {
             appSettings = nil
             toolSwitches = [:]
+            growthDimensionsFile = nil
+            growthDimensionsError = nil
             settingsFormError = "未找到配置根目录（开发版请在「运行与日志」中选择仓库根目录）。"
             configurationEpoch += 1
             return
@@ -172,6 +182,20 @@ final class AppModel: ObservableObject {
         } else {
             toolSwitches = ToolSwitchesFile.normalized([:])
         }
+
+        growthDimensionsFile = nil
+        growthDimensionsError = nil
+        let growthURL = root.appendingPathComponent("config/growth_dimensions.json")
+        if FileManager.default.fileExists(atPath: growthURL.path) {
+            do {
+                growthDimensionsFile = try GrowthDimensionsFile.load(from: growthURL)
+            } catch {
+                growthDimensionsError = "读取 growth_dimensions.json 失败：\(error.localizedDescription)"
+            }
+        } else {
+            growthDimensionsError = "未找到 config/growth_dimensions.json。"
+        }
+
         configurationEpoch += 1
     }
 
@@ -196,6 +220,21 @@ final class AppModel: ObservableObject {
         do {
             try ToolSwitchesFile.save(toolSwitches, to: url)
             presentAlert(title: Self.appName, message: "已保存采集开关。")
+            loadConfiguration()
+        } catch {
+            presentAlert(title: "保存失败", message: error.localizedDescription)
+        }
+    }
+
+    func saveGrowthDimensionsToDisk() {
+        guard let doc = growthDimensionsFile, let root = settingsTargetRoot() else {
+            presentAlert(title: Self.appName, message: "没有可保存的成长维度配置。")
+            return
+        }
+        let url = root.appendingPathComponent("config/growth_dimensions.json")
+        do {
+            try doc.save(to: url)
+            presentAlert(title: Self.appName, message: "已保存成长维度；下次采集 / 日报将按开关生效。")
             loadConfiguration()
         } catch {
             presentAlert(title: "保存失败", message: error.localizedDescription)

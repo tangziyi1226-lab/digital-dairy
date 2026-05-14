@@ -88,16 +88,20 @@ def load_settings(path: Path | None = None) -> dict[str, object]:
 def load_dimensions(path: Path | None = None) -> list[GrowthDimension]:
     dimensions_path = path or CONFIG_DIR / "growth_dimensions.json"
     data = read_json(dimensions_path)
-    return [
-        GrowthDimension(
-            id=item["id"],
-            name=item["name"],
-            description=item.get("description", ""),
-            keywords=item.get("keywords", []),
-            hosts=item.get("hosts", []),
+    out: list[GrowthDimension] = []
+    for item in data["dimensions"]:
+        if item.get("enabled") is False:
+            continue
+        out.append(
+            GrowthDimension(
+                id=item["id"],
+                name=item["name"],
+                description=item.get("description", ""),
+                keywords=item.get("keywords", []),
+                hosts=item.get("hosts", []),
+            )
         )
-        for item in data["dimensions"]
-    ]
+    return out
 
 
 def local_day_bounds(date_text: str, timezone=TIMEZONE) -> tuple[dt.datetime, dt.datetime]:

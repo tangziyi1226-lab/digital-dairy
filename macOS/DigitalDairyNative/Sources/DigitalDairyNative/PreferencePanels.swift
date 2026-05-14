@@ -6,6 +6,34 @@ import SwiftUI
 struct PrefsGeneralView: View {
     @Binding var settings: AppSettings
 
+    private static let timezonePresets: [String] = [
+        "Asia/Shanghai", "Asia/Hong_Kong", "Asia/Taipei", "Asia/Singapore", "Asia/Tokyo", "Asia/Seoul",
+        "Europe/London", "Europe/Paris", "Europe/Berlin",
+        "America/New_York", "America/Chicago", "America/Los_Angeles",
+        "America/Sao_Paulo", "Australia/Sydney", "Pacific/Auckland", "UTC",
+    ]
+
+    private static func scheduleHalfHours() -> [String] {
+        var out: [String] = []
+        for h in 5 ... 23 {
+            out.append(String(format: "%02d:00", h))
+            out.append(String(format: "%02d:30", h))
+        }
+        return out
+    }
+
+    private var timezonePickerValues: [String] {
+        var s = Self.timezonePresets
+        if !s.contains(settings.timezone) { s.append(settings.timezone) }
+        return s
+    }
+
+    private var schedulePickerValues: [String] {
+        var s = Self.scheduleHalfHours()
+        if !s.contains(settings.schedule.time) { s.append(settings.schedule.time) }
+        return s.sorted()
+    }
+
     var body: some View {
         Form {
             Section("用户") {
@@ -13,15 +41,44 @@ struct PrefsGeneralView: View {
                 TextField("昵称（用于开场文案）", text: $settings.user.nickname)
             }
             Section("时间与日程") {
-                TextField("时区（IANA）", text: $settings.timezone)
-                    .textFieldStyle(.roundedBorder)
-                TextField("每日参考时间", text: $settings.schedule.time)
-                    .help("例如 11:00")
+                Picker("时区（IANA）", selection: $settings.timezone) {
+                    ForEach(timezonePickerValues, id: \.self) { id in
+                        Text(id).tag(id)
+                    }
+                }
+                .help("下拉选择常用时区；列表已包含当前值。")
+                Picker("每日参考时间", selection: $settings.schedule.time) {
+                    ForEach(schedulePickerValues, id: \.self) { t in
+                        Text(t).tag(t)
+                    }
+                }
+                .help("用于日报节奏与开场话术占位符。")
             }
-            Section("开场话术") {
-                TextEditor(text: $settings.messages.dailyOpeningHint)
-                    .font(.body)
-                    .frame(minHeight: 100)
+            Section("开场话术 ✨") {
+                ZStack(alignment: .topLeading) {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(
+                            LinearGradient(
+                                colors: [
+                                    Color.purple.opacity(0.14),
+                                    Color.teal.opacity(0.1),
+                                    Color.blue.opacity(0.08),
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                    TextEditor(text: $settings.messages.dailyOpeningHint)
+                        .scrollContentBackground(.hidden)
+                        .font(.system(.body, design: .rounded))
+                        .frame(minHeight: 110)
+                        .padding(8)
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 1)
+                )
             }
             Section("Inbox 轮询") {
                 Stepper(value: $settings.replies.pollMinutes, in: 1 ... 240) {
@@ -174,7 +231,6 @@ struct PrefsAdvancedView: View {
         Form {
             Section("路径") {
                 TextField("tool_switches 相对路径", text: $settings.toolSwitchesPath)
-                TextField("日报提示词模板路径", text: $settings.templates.dailyPrompt)
             }
             Section("数据保留") {
                 Stepper(value: $settings.dataRetention.dailySummariesKeepDays, in: 1 ... 365) {
@@ -193,6 +249,76 @@ struct PrefsAdvancedView: View {
                     Text("截图视口高：\(settings.visualReport.viewportHeight)")
                 }
                 Toggle("清理旧截图目录", isOn: $settings.visualReport.cleanupScreenshotDirs)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - 成长维度
+
+struct PrefsGrowthDimensionsView: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        Form {
+            Section {
+                Text("关闭的维度不会参与 Python 侧关键词 / 域名归类（与 tools/common.py 中 load_dimensions 一致）。")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+            if let doc = model.growthDimensionsFile {
+                ForEach(Array(doc.dimensions.enumerated()), id: \.element.id) { index, row in
+                    Section(row.name) {
+                        Toggle("参与归类", isOn: enabledBinding(index: index))
+                        Text(row.description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("id：\(row.id)")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                            .textSelection(.enabled)
+                    }
+                }
+            } else {
+                Section {
+                    Text(model.growthDimensionsError ?? "未加载到 growth_dimensions.json。")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private func enabledBinding(index: Int) -> Binding<Bool> {
+        Binding(
+            get: {
+                guard let doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else {
+                    return true
+                }
+                return doc.dimensions[index].enabled
+            },
+            set: { newValue in
+                guard var doc = model.growthDimensionsFile else { return }
+                doc.dimensions[index].enabled = newValue
+                model.growthDimensionsFile = doc
+            }
+        )
+    }
+}
+
+// MARK: - 模版
+
+struct PrefsTemplatesView: View {
+    @Binding var settings: AppSettings
+
+    var body: some View {
+        Form {
+            Section("日报提示词") {
+                TextField("相对于项目根的 Markdown 路径", text: $settings.templates.dailyPrompt)
+                Text("例如 templates/daily_summary_prompt.md；修改后请保存。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
@@ -290,7 +416,9 @@ struct PreferencesHostView: View {
                 AboutPanel()
             case .appearance:
                 AppearancePanel()
-            case .prefsGeneral, .prefsApi, .prefsNotifications, .prefsAdvanced:
+            case .prefsGrowthDimensions:
+                PrefsGrowthDimensionsView()
+            case .prefsGeneral, .prefsApi, .prefsNotifications, .prefsAdvanced, .prefsTemplates:
                 if let settings = model.appSettings {
                     switch tab {
                     case .prefsGeneral:
@@ -301,6 +429,8 @@ struct PreferencesHostView: View {
                         PrefsNotificationsView(settings: binding(settings))
                     case .prefsAdvanced:
                         PrefsAdvancedView(settings: binding(settings))
+                    case .prefsTemplates:
+                        PrefsTemplatesView(settings: binding(settings))
                     default:
                         EmptyView()
                     }

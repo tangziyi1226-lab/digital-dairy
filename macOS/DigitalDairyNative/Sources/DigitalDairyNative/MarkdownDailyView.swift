@@ -8,8 +8,8 @@ struct MarkdownDailyView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("日报阅览")
-                    .font(.title3.weight(.semibold))
+                Text("📔 日报阅览")
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
                 Spacer()
                 DatePicker(
                     "日期",
@@ -33,12 +33,36 @@ struct MarkdownDailyView: View {
             }
 
             ScrollView {
-                Text(attributed)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
-                    .padding(12)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("✨ 今日总结")
+                        .font(.system(.title2, design: .rounded).weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(attributed)
+                        .lineSpacing(6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
+                .padding(18)
             }
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(.ultraThinMaterial)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(
+                        LinearGradient(
+                            colors: [
+                                Color.purple.opacity(0.22),
+                                Color.mint.opacity(0.18),
+                                Color.blue.opacity(0.15),
+                            ],
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        ),
+                        lineWidth: 1
+                    )
+            )
         }
         .padding(14)
         .onAppear(perform: reload)
@@ -53,18 +77,23 @@ struct MarkdownDailyView: View {
             return
         }
         guard FileManager.default.fileExists(atPath: url.path) else {
-            attributed = AttributedString("该日尚无总结文件。可先运行「生成今日日报」或选择其它日期。")
+            attributed = AttributedString("该日尚无总结文件。可先运行「生成今日日报」或选择其它日期。✨")
             loadMessage = ""
             return
         }
         do {
             let raw = try String(contentsOf: url, encoding: .utf8)
-            var opts = AttributedString.MarkdownParsingOptions()
-            opts.interpretedSyntax = .full
-            if let parsed = try? AttributedString(markdown: raw, options: opts) {
+            let prepared = DailySummaryMarkdown.prepareSourceForParsing(raw)
+            if let parsed = try? DailySummaryMarkdown.parseStyledDocument(prepared) {
                 attributed = parsed
             } else {
-                attributed = AttributedString(raw)
+                var opts = AttributedString.MarkdownParsingOptions()
+                opts.interpretedSyntax = .full
+                if let fallback = try? AttributedString(markdown: prepared, options: opts) {
+                    attributed = fallback
+                } else {
+                    attributed = AttributedString(prepared)
+                }
             }
             loadMessage = ""
         } catch {

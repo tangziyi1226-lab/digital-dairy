@@ -66,7 +66,8 @@ struct ContentView: View {
             MarkdownDailyView()
         case .charts:
             EventChartsView()
-        case .prefsGeneral, .prefsApi, .prefsCollectors, .prefsNotifications, .prefsAdvanced:
+        case .prefsGeneral, .prefsApi, .prefsCollectors, .prefsNotifications, .prefsAdvanced,
+             .prefsGrowthDimensions, .prefsTemplates:
             PreferenceDetailShell(tab: model.sidebarSelection)
         case .appearance:
             ScrollView {
@@ -94,9 +95,12 @@ private struct PreferenceDetailShell: View {
             if showsActionBar {
                 HStack(spacing: 12) {
                     Button("保存到磁盘") {
-                        if tab == .prefsCollectors {
+                        switch tab {
+                        case .prefsCollectors:
                             model.saveToolSwitchesToDisk()
-                        } else {
+                        case .prefsGrowthDimensions:
+                            model.saveGrowthDimensionsToDisk()
+                        default:
                             model.saveAppSettingsToDisk()
                         }
                     }
@@ -115,10 +119,12 @@ private struct PreferenceDetailShell: View {
     private var showsActionBar: Bool {
         guard model.settingsTargetRoot() != nil else { return false }
         switch tab {
-        case .prefsGeneral, .prefsApi, .prefsNotifications, .prefsAdvanced:
+        case .prefsGeneral, .prefsApi, .prefsNotifications, .prefsAdvanced, .prefsTemplates:
             return model.appSettings != nil
         case .prefsCollectors:
             return true
+        case .prefsGrowthDimensions:
+            return model.growthDimensionsFile != nil
         default:
             return false
         }

@@ -26,6 +26,12 @@ for d in scripts tools templates config; do
 done
 find "$RUNTIME" -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
+# 先全量 clean 再编译，避免增量缓存导致 .app 仍是旧界面。
+(
+  cd "$PKG_DIR" || exit 1
+  swift package clean
+  swift build -c release
+)
 BIN_DIR="$(cd "$PKG_DIR" && swift build -c release --show-bin-path)"
 EXE="${BIN_DIR}/DigitalDairyNative"
 if [[ ! -x "$EXE" ]]; then

@@ -12,7 +12,10 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "DigitalDairyNative",
-            path: "Sources/DigitalDairyNative"
+            path: "Sources/DigitalDairyNative",
+            resources: [
+                .process("Resources"),
+            ]
         ),
     ]
 )
