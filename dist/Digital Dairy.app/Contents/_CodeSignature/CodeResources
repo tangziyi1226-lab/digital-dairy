@@ -3342,7 +3342,7 @@
 		</data>
 		<key>Resources/lib/python312.zip</key>
 		<data>
-		vC0yOi65dTpTCpGDhRD965it2mM=
+		thUKncmdawWA0qAqw0UhtiBFRC8=
 		</data>
 		<key>Resources/openssl.ca/cert.pem</key>
 		<data>
@@ -3354,11 +3354,11 @@
 		</data>
 		<key>Resources/site.pyc</key>
 		<data>
-		/AZs6qCYpY3YQQBY0ez8KIPU+SE=
+		K9QZ/dux2rpvNkXjzgEu3UObhK0=
 		</data>
 		<key>Resources/status_bar.py</key>
 		<data>
-		trtl0Xaj9Wzo+Y4VK6DhyidzfUQ=
+		BX4U8hLVDTnLxc7LRf0dHLpAFxE=
 		</data>
 		<key>Resources/zlib.cpython-312-darwin.so</key>
 		<data>
@@ -9241,7 +9241,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			sggXAlmJDpe2iI7W5FhTk31fhkBYHYvbKIEpI8gXVLU=
+			amH/ebGGBivnI2Eu6/jAQk78WIp7MULrCiQ+38qAti8=
 			</data>
 		</dict>
 		<key>Resources/openssl.ca/cert.pem</key>
@@ -9262,14 +9262,14 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			613rsZ2zOp5IDwOCHdfsSGGGa7yefg3DjsovbOJRB7w=
+			3hwpMsls1ip6ta7CJ6Kv5C9mJEGbFWEMCY9yG0VfQ5E=
 			</data>
 		</dict>
 		<key>Resources/status_bar.py</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			mSFmPJD6zocXeKY5bVozxbdsHD8doiW+jOP2/qLHlgo=
+			am9quu4pH1M7gUBT4gmK5ghnxATWgl0fWMfnFuV7GUE=
 			</data>
 		</dict>
 		<key>Resources/zlib.cpython-312-darwin.so</key>
