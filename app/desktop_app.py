@@ -84,7 +84,15 @@ def _load_json(path: Path) -> dict[str, object]:
 
 
 def _subprocess_env() -> dict[str, str]:
+    """子进程环境：从 py2app 启动时不能继承 PYTHONHOME/PYTHONPATH，否则会指向 .app 内解释器布局，系统 python3 会崩。"""
     env = os.environ.copy()
+    for key in (
+        "PYTHONHOME",
+        "PYTHONPATH",
+        "PYTHONEXECUTABLE",
+        "__PYVENV_LAUNCHER__",
+    ):
+        env.pop(key, None)
     env.setdefault("PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin")
     return env
 

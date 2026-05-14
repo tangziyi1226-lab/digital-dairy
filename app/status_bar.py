@@ -98,6 +98,8 @@ def _settings_script_path(project_root: Path) -> Path | None:
 
 def _subprocess_env() -> dict[str, str]:
     env = os.environ.copy()
+    for key in ("PYTHONHOME", "PYTHONPATH", "PYTHONEXECUTABLE", "__PYVENV_LAUNCHER__"):
+        env.pop(key, None)
     # 从 .app 启动时 PATH 常过短，子进程找不到 python3 或动态库。
     env.setdefault("PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin")
     return env
