@@ -41,27 +41,13 @@ struct AppSettings: Codable, Equatable {
         /// 可选；为空时界面使用内置下拉列表，不改变 `daily_prompt` 语义。
         var promptPresets: [TemplatePreset]?
 
-        enum CodingKeys: String, CodingKey {
-            case dailyPrompt = "daily_prompt"
-            case promptPresets = "prompt_presets"
-        }
-
         init(dailyPrompt: String, promptPresets: [TemplatePreset]? = nil) {
             self.dailyPrompt = dailyPrompt
             self.promptPresets = promptPresets
         }
 
-        init(from decoder: Decoder) throws {
-            let c = try decoder.container(keyedBy: CodingKeys.self)
-            dailyPrompt = try c.decode(String.self, forKey: .dailyPrompt)
-            promptPresets = try c.decodeIfPresent([TemplatePreset].self, forKey: .promptPresets)
-        }
-
-        func encode(to encoder: Encoder) throws {
-            var c = encoder.container(keyedBy: CodingKeys.self)
-            try c.encode(dailyPrompt, forKey: .dailyPrompt)
-            try c.encodeIfPresent(promptPresets, forKey: .promptPresets)
-        }
+        // 注意：外层使用 key(Decoding|Encoding)Strategy 的 snake_case 时，
+        // 不要在此处再写 `daily_prompt` 形式的 CodingKey 字面量，否则与策略转换后的键对不上，会导致整份 settings 解码失败。
     }
 
     struct DataRetentionBlock: Codable, Equatable {
@@ -161,7 +147,44 @@ struct AppSettings: Codable, Equatable {
         let data = try Data(contentsOf: url)
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
-        return try decoder.decode(AppSettings.self, from: data)
+        do {
+            return try decoder.decode(AppSettings.self, from: data)
+        } catch {
+            // 兼容旧版/不完整的 settings.json：将缺失字段用默认值补全后再解码
+            let patched = try Self.patchWithDefaults(data: data)
+            return try decoder.decode(AppSettings.self, from: patched)
+        }
+    }
+
+    /// 将用户已有的 JSON 与默认值深度合并：用户值优先，缺失键用默认值补全。
+    private static func patchWithDefaults(data: Data) throws -> Data {
+        guard let existing = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+            throw NSError(domain: "AppSettings", code: 2,
+                          userInfo: [NSLocalizedDescriptionKey: "settings.json 不是合法的 JSON 对象"])
+        }
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        let defaultData = try encoder.encode(makeDefaultTemplate())
+        guard let defaultDict = try JSONSerialization.jsonObject(with: defaultData, options: []) as? [String: Any] else {
+            throw NSError(domain: "AppSettings", code: 3,
+                          userInfo: [NSLocalizedDescriptionKey: "内部默认值序列化失败"])
+        }
+        let merged = deepMerge(base: defaultDict, override: existing)
+        return try JSONSerialization.data(withJSONObject: merged, options: [])
+    }
+
+    /// 深度合并：`override` 中的值覆盖 `base`；对嵌套 Dict 递归合并而非整体替换。
+    private static func deepMerge(base: [String: Any], override: [String: Any]) -> [String: Any] {
+        var result = base
+        for (key, value) in override {
+            if let baseDict = result[key] as? [String: Any],
+               let overrideDict = value as? [String: Any] {
+                result[key] = deepMerge(base: baseDict, override: overrideDict)
+            } else {
+                result[key] = value
+            }
+        }
+        return result
     }
 
     func save(to url: URL) throws {

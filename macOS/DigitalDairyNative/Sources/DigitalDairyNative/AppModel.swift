@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 final class AppModel: ObservableObject {
     enum SidebarItem: String, CaseIterable, Identifiable {
-        case run = "运行与日志"
+        case run = "首页"
         case dailyReport = "日报阅览"
         case charts = "数据图表"
         case prefsGeneral = "常规与日程"
@@ -23,7 +23,7 @@ final class AppModel: ObservableObject {
 
         var symbolName: String {
             switch self {
-            case .run: return "play.circle"
+            case .run: return "house.fill"
             case .dailyReport: return "doc.text"
             case .charts: return "chart.bar"
             case .prefsGeneral: return "person.text.rectangle"
@@ -152,7 +152,7 @@ final class AppModel: ObservableObject {
             toolSwitches = [:]
             growthDimensionsFile = nil
             growthDimensionsError = nil
-            settingsFormError = "未找到配置根目录（开发版请在「运行与日志」中选择仓库根目录）。"
+            settingsFormError = "未找到配置根目录（开发版请在「首页」中选择仓库根目录）。"
             configurationEpoch += 1
             return
         }
