@@ -7,7 +7,7 @@ import math
 from collections import Counter, defaultdict
 from pathlib import Path
 
-from tools.common import DATA_DIR, ROOT, GrowthDimension, LifeEvent, load_dimensions
+from tools.common import CONFIG_DIR, DATA_DIR, GrowthDimension, LifeEvent, load_dimensions
 
 BLOCK_HOURS = 4
 
@@ -87,7 +87,7 @@ def classify_kind(e: LifeEvent) -> str:
 
 
 def _load_visual_prefs() -> dict[str, object]:
-    path = ROOT / "config" / "settings.json"
+    path = CONFIG_DIR / "settings.json"
     if not path.is_file():
         return {}
     try:
@@ -942,7 +942,7 @@ def write_visual_report(date_text: str, out_path: Path | None = None) -> Path:
     if not events_path.exists():
         raise FileNotFoundError(f"Missing events file: {events_path}")
     events = events_from_json(events_path)
-    dimensions = load_dimensions(ROOT / "config" / "growth_dimensions.json")
+    dimensions = load_dimensions(CONFIG_DIR / "growth_dimensions.json")
     html_str = build_html(date_text, events, dimensions)
     if out_path is None:
         out_dir = DATA_DIR / "visual"

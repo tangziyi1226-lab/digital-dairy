@@ -4,6 +4,162 @@
 <dict>
 	<key>files</key>
 	<dict>
+		<key>Resources/.macos-app-runtime/config/growth_dimensions.json</key>
+		<data>
+		U+cojJSoLdjDskvlE5cpbHYdsSg=
+		</data>
+		<key>Resources/.macos-app-runtime/config/settings.example.json</key>
+		<data>
+		yBJnSj7wOYaWtrULjvdaR7eUfEo=
+		</data>
+		<key>Resources/.macos-app-runtime/config/settings.json</key>
+		<data>
+		3b5mMZh9XF2O2mIldnogWM1BG9c=
+		</data>
+		<key>Resources/.macos-app-runtime/config/tool_switches.example.json</key>
+		<data>
+		eVHfJXpppQOEzyBljzpIuA1QggI=
+		</data>
+		<key>Resources/.macos-app-runtime/config/tool_switches.json</key>
+		<data>
+		wSXa4KmulcdGQESYaUp3X1gklUM=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/add_inbox_message.py</key>
+		<data>
+		LiwrHU03ZEzFRkQ8eSqI+8oEr5M=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/answer_reply.py</key>
+		<data>
+		tTSv7bWx/ir8ef0UIqiL5VvOPt4=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/build_macos_dmg.sh</key>
+		<data>
+		vD0uDv/G/DESdd0TWQeiB4tlA/s=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/generate_daily_narrative.py</key>
+		<data>
+		QqMpQ0MFjZrMuUZPGu731z0hw4w=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/generate_visual_report.py</key>
+		<data>
+		zDafO9xTmN9vhXzQ00Xsas54Xus=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/install_launchd.py</key>
+		<data>
+		EIhFTL60IQwbLuE2RMQOC6ZG9nw=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/process_inbox.py</key>
+		<data>
+		GhGawcpDGkpRhub5yBoubepXE7E=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/run_daily.py</key>
+		<data>
+		kY37noZVMyIhAputvqiECEMdi5s=
+		</data>
+		<key>Resources/.macos-app-runtime/scripts/send_test_email.py</key>
+		<data>
+		AW1jqQKftkWHox9CQmvUXM/Cqy0=
+		</data>
+		<key>Resources/.macos-app-runtime/templates/daily_summary_prompt.md</key>
+		<data>
+		8pB7zopE3vYEz5zRgHvaeWbv6QA=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/__init__.py</key>
+		<data>
+		T1o1mg2bdrMCjdeaZuH1HB5/AVI=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/browser_history.py</key>
+		<data>
+		6SGZYIO4OpUclJ2O0edEGn/Eeuc=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/collectors/__init__.py</key>
+		<data>
+		nr1q8Y0Vpr89ARnZW7g8XBwmPbI=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/collectors/ai_platforms.py</key>
+		<data>
+		4G3h3+8VCdgU6XsQgHMHfx7gGV4=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/collectors/browsers.py</key>
+		<data>
+		HRuHyfGIPHDupuiDHA114f6Umds=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/collectors/ides.py</key>
+		<data>
+		rCkJCcyvo/gjbYKecN3a+Y/AZr0=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/collectors/imports.py</key>
+		<data>
+		864aWVcvQ7Wo7CxzE41yeyLXkew=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/collectors/information_platforms.py</key>
+		<data>
+		gKtBQ6qh3kxHrA0l5Dxziao4RZI=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/collectors/productivity.py</key>
+		<data>
+		R1KHyQAa/p4D90fxahxXSawfsGA=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/common.py</key>
+		<data>
+		XE2Lc1tUaDRplSOFu9zqcLzYX80=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/cursor_aiide.py</key>
+		<data>
+		lubqxSMtV+bcSSGUvtd7hu9r0r0=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/import_files.py</key>
+		<data>
+		d1ftPgcdzxmful/LSyzcyWho7P0=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/llm.py</key>
+		<data>
+		FpKQjRkTDoJirfXHlrjiPDFwpwc=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/markdown_email.py</key>
+		<data>
+		7ZCYHyfYeuX+EDVUQfFr6EYZA1o=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/notifier.py</key>
+		<data>
+		GLFddX6dEYB6KbULuNDLQkc6M8k=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/placeholders.py</key>
+		<data>
+		olhClRXruWFx8kGHy6zoCFqgSXc=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/platform_browser.py</key>
+		<data>
+		yavY53A7fHn2p02FAaJfXdsTDik=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/platforms.py</key>
+		<data>
+		wgD/bnBr5Opjh3jtrXaXRXfqotg=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/qa.py</key>
+		<data>
+		Zp47uDCGgK3nxhW42D0rs19kteE=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/registry.py</key>
+		<data>
+		5xUZmwtt/BU/wlEsK0yuj4VtFJo=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/reporting.py</key>
+		<data>
+		k2YOR7CIegYklRmbIC/nH3blHOw=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/ticktick.py</key>
+		<data>
+		+nGYBqkff7Et6a2ZXAyQqbYW0Ew=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/visual_html_report.py</key>
+		<data>
+		AcR3yuvFbE8cT1PEvWf/lLU0bSI=
+		</data>
+		<key>Resources/.macos-app-runtime/tools/visual_report_screenshots.py</key>
+		<data>
+		A2H3F/0hzbv9xY9akru6vKKX1GE=
+		</data>
 		<key>Resources/__boot__.py</key>
 		<data>
 		mzFKYuZijGtvWom8jpPHJTb0qcM=
@@ -18,7 +174,7 @@
 		</data>
 		<key>Resources/desktop_app.py</key>
 		<data>
-		O85HMmhLOvy529kaHfGrHV1fpac=
+		u+gga5LfrCkzrD0WUdfcdjM4jeY=
 		</data>
 		<key>Resources/include/python3.12/pyconfig.h</key>
 		<data>
@@ -3222,7 +3378,7 @@
 		</data>
 		<key>Resources/lib/python312.zip</key>
 		<data>
-		mRYrF1AVRDYgRsdwqt2eIP3rskU=
+		Z4jwYN7b+7uJLGbNMjZyWZwNqOQ=
 		</data>
 		<key>Resources/lib/tcl8.6/auto.tcl</key>
 		<data>
@@ -4818,7 +4974,7 @@
 		</data>
 		<key>Resources/site.pyc</key>
 		<data>
-		+KPeLCvUKTbWLy717XLz6SASjno=
+		hKdCV+lHZkBKxlZuX61OJbx8SzQ=
 		</data>
 		<key>Resources/zlib.cpython-312-darwin.so</key>
 		<data>
@@ -4872,6 +5028,279 @@
 			<key>requirement</key>
 			<string>cdhash H"6e7b3d13b2298b853bfa0ab0a79aeabed94dc15b"</string>
 		</dict>
+		<key>Resources/.macos-app-runtime/config/growth_dimensions.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			iOi7Si5TZ/hGYuKaVKKEpQ85b/8eVi4/7sEPZlbC0aE=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/config/settings.example.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			uRW9+C6Tq2ZzM98U0LOKD+Rw7ApSEP/OD9H5KLfhMUk=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/config/settings.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			TrPfTG4FquLqDZHQS470i6D8K1s6FFyPcMEBVA/IzdE=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/config/tool_switches.example.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			eNh6y64WqlM03/V+1qMUNG3fOssDFPTunwjE5JLCQD0=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/config/tool_switches.json</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			3vGpPTcRsUcL9d6qf4GbijbRN12mMLt7dPBE+nLwLeE=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/add_inbox_message.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			2lUHcu+0RTgSV1vvWB+PWnwv9UwCwOQ45r7rAgXKlB4=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/answer_reply.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			947sopsuFEOj+6i5f32r+cfauATmJLl1gNxIHFkXj3w=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/build_macos_dmg.sh</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			PK2h9IoT9qT866iu8yqVv/KFSDM8BE9SPE3A+O+x4Ts=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/generate_daily_narrative.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			Xvpapm6AFmKDJeohTeFkstIh0vDWM1zkZw4S7Y0lqlM=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/generate_visual_report.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			IKGYY9qNznODavLYp2+W+42zX0lbJj0YaKZZI4hDCbM=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/install_launchd.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			xHVgsIATZDE0vl0Gkw5CQqjciJb7jklMOogQ3g34YP8=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/process_inbox.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			AKjcvvURFp51Tzwe0zKYd27dpeQSElO7nsk6bro2YpQ=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/run_daily.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			wkBDpTsA7bbgODAjdteBn4J5qP9ehC+4Xwy/6QfJMJ4=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/scripts/send_test_email.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			y6z8VZUFpWngqHFZiF85j4LJu+XMJaOiCQGaUvbzXbQ=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/templates/daily_summary_prompt.md</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			kNdcbLus7//RGFcBDXvwAkXeanxqi5JJ7G0L69UmeDQ=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/__init__.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			zQ8wQImHb0ERmRY7voJkkSGLJLLSOrBJKSL8JpCKCXk=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/browser_history.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			r8bRLDcfC68yocZiDCx1zo2ZlM++v1rN8XzSlxPUyko=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/collectors/__init__.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			rYo9499/rggOPEnH3+XszMOqn2ZF6q3dgwAWgD9bOsU=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/collectors/ai_platforms.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			rZJfSwswDzKD9V9l4salPN59u9sAk7ffu8/zdokkTnk=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/collectors/browsers.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			TQCnScfqPuLY+/EmQrfh/sefzC99dqjg1gI4iclB3h0=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/collectors/ides.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			vbNfkWKBfbXyKYNrYQXq/muMviURi8CYhz1CfAUiRVI=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/collectors/imports.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			D59Ipp3VEZZqYtHVoLQkBNddqbdLEE4M/nSPoCVhL18=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/collectors/information_platforms.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			WbjP+aHRjXhNMiK5LOF0dUJDZjcKN6d1eX2HGSj4ar0=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/collectors/productivity.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			miho/5fYU89pSPMlwPUAPmXMIqhLWWJfnw/gbC7ju24=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/common.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			3wpUTl+Qv+aleReZ/XWz0lTvGB3j9vUjhW1ebfQksyI=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/cursor_aiide.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			K00aPc9uCeLbIUplJFjOfvHk8EmTkUSUYQiR4F8hy0A=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/import_files.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			k2IIZ8pOq8E3GN2NS6x2j59qeBf5br/DWcQnelPAyQA=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/llm.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			VG17Dn9S9bxeqb5rNWS0AJqJWt02lLAq8pjEvi9Sqrs=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/markdown_email.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			o7RZyXM2sDyUiGj1rB1LeHwzcuUgFafXQSdOq9zSYvk=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/notifier.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			S8agF/BqG7CI2cQ8aAq+a0Gdu7k0ENuVjg6nqJi1KIc=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/placeholders.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			kaU1E2+FWx5nH6UsucK7HtfsZoJ/55lDEs8OANz5xHA=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/platform_browser.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			H6G5tMrKJ7Ii1r8q0R50MYBllTPoS3lArBGT5/mwGP0=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/platforms.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			B4dDqqfXT4+l6doWZWWq0onMEPNLIa+BSGkLKRQAoi4=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/qa.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			fkTrkuJe/oDvub+Fik1i0CkYOhcQF+NfXaAERkNOUac=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/registry.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			r2fiV35hqi7Q5W8YrpNu5fzoKNrp28hKleQt6d6cwp0=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/reporting.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			May7FnsSYTCoXla8CCDnAwMSD5j0nfybCeRlFq66Moo=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/ticktick.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			tlgmrTzgjdhc1h8LotqsyqYEOGhbTDyoTlNbWf41lNc=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/visual_html_report.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			chnLRnEobupOJdaMlasA0OUNbZBE23a8og1xXPsIPIw=
+			</data>
+		</dict>
+		<key>Resources/.macos-app-runtime/tools/visual_report_screenshots.py</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			TGPXzledoXlK3Eygve5QkcDnmmVH4jSjzkU6G+E7IUc=
+			</data>
+		</dict>
 		<key>Resources/__boot__.py</key>
 		<dict>
 			<key>hash2</key>
@@ -4897,7 +5326,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			yOlMa19bMFsSTVnesbg/MBwOU6UTUJzGyW3F/aPGn78=
+			d59TY2GMBmMNPrPsM+Hwn698A/jN0wOs8ua5KWrnJBU=
 			</data>
 		</dict>
 		<key>Resources/include/python3.12/pyconfig.h</key>
@@ -10509,7 +10938,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			mv0AtmGZrJyBTKh4IWleZ4SIYHRUz+5XSYFpk6GQqzM=
+			jcD3c/g61FwkZGXT+dM57OTzLZq7hzh6yG77YRW2/6Q=
 			</data>
 		</dict>
 		<key>Resources/lib/tcl8.6/auto.tcl</key>
@@ -13302,7 +13731,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			ypgoQ6W5E4f5FApYzsgHtmpIw34FDLb05/N91Mo3N70=
+			KtfS7TXLyluK2JppdNGJni8awf96FhMOu2yOGhdIOBw=
 			</data>
 		</dict>
 		<key>Resources/zlib.cpython-312-darwin.so</key>

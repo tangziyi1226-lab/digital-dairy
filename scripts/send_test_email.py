@@ -10,7 +10,7 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from tools.common import ROOT, load_settings
+from tools.common import load_settings, resolve_settings_argument
 from tools.notifier import send_notifications
 
 
@@ -18,7 +18,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Send a test email (requires notifications.email enabled).")
     parser.add_argument("--settings", default="config/settings.json", help="Path to settings JSON.")
     args = parser.parse_args()
-    settings = load_settings(ROOT / args.settings)
+    settings = load_settings(resolve_settings_argument(args.settings))
     email_cfg = settings.get("notifications", {}).get("email", {})
     if not isinstance(email_cfg, dict) or not email_cfg.get("enabled"):
         print(

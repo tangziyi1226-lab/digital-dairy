@@ -10,7 +10,7 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from tools.common import ROOT, load_settings
+from tools.common import load_settings, resolve_settings_argument
 from tools.qa import answer_question, latest_summary_date
 
 
@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    settings = load_settings(ROOT / args.settings)
+    settings = load_settings(resolve_settings_argument(args.settings))
     date_text = args.date or latest_summary_date()
     if not date_text:
         raise SystemExit("No available summary found. Run scripts/run_daily.py first.")

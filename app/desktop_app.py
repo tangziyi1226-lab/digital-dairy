@@ -5,6 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import json
 import os
+import shutil
 import subprocess
 import sys
 import threading
@@ -97,15 +98,52 @@ def _subprocess_env() -> dict[str, str]:
     return env
 
 
-def _python_cmd(root: Path) -> str:
-    venv_python = root / ".venv" / "bin" / "python3"
+def _payload_root() -> Path | None:
+    if not getattr(sys, "frozen", False):
+        return None
+    rp = os.environ.get("RESOURCEPATH")
+    if not rp:
+        return None
+    p = Path(rp) / "app-runtime"
+    return p if (p / "scripts" / "run_daily.py").exists() else None
+
+
+def _ensure_user_layout(payload: Path, writable: Path) -> None:
+    (writable / "config").mkdir(parents=True, exist_ok=True)
+    (writable / "data" / "events").mkdir(parents=True, exist_ok=True)
+    (writable / "data" / "summaries").mkdir(parents=True, exist_ok=True)
+    (writable / "data" / "visual").mkdir(parents=True, exist_ok=True)
+    (writable / "data" / "inbox").mkdir(parents=True, exist_ok=True)
+    (writable / "data" / "imports").mkdir(parents=True, exist_ok=True)
+    (writable / "data" / "mobile").mkdir(parents=True, exist_ok=True)
+    (writable / "data" / "health").mkdir(parents=True, exist_ok=True)
+    cfg = writable / "config"
+    ex = payload / "config"
+    if not (cfg / "settings.json").exists() and (ex / "settings.example.json").exists():
+        shutil.copy2(ex / "settings.example.json", cfg / "settings.json")
+    if not (cfg / "tool_switches.json").exists() and (ex / "tool_switches.example.json").exists():
+        shutil.copy2(ex / "tool_switches.example.json", cfg / "tool_switches.json")
+    if not (cfg / "growth_dimensions.json").exists():
+        gd = ex / "growth_dimensions.json"
+        if gd.exists():
+            shutil.copy2(gd, cfg / "growth_dimensions.json")
+        else:
+            (cfg / "growth_dimensions.json").write_text(
+                '{"dimensions":[{"id":"general_input","name":"日常","description":"","keywords":[],"hosts":[]}]}',
+                encoding="utf-8",
+            )
+
+
+def _python_cmd(code_root: Path) -> str:
+    venv_python = code_root / ".venv" / "bin" / "python3"
     if venv_python.exists():
         return str(venv_python)
-    return "python3"
+    resolved = shutil.which("python3")
+    return resolved or "python3"
 
 
-def _api_ready(root: Path) -> tuple[bool, str]:
-    settings_path = root / "config" / "settings.json"
+def _api_ready(writable_root: Path) -> tuple[bool, str]:
+    settings_path = writable_root / "config" / "settings.json"
     if not settings_path.exists():
         return False, "未找到 config/settings.json，请先在「设置」里保存一次配置。"
     try:
@@ -132,20 +170,39 @@ class DigitalDairyDesktop(tk.Tk):
         self.minsize(640, 560)
 
         self._state = _load_state()
-        self._project_root: Path | None = None
         self._busy = False
+        self._payload_path = _payload_root()
+        self._bundled = self._payload_path is not None
+        self._writable_root = APP_STORAGE_DIR
+        self._project_root: Path | None = None
 
-        initial = self._state.get("project_root", "").strip()
-        if initial:
-            candidate = Path(initial).expanduser().resolve()
-            if _looks_like_project_root(candidate):
-                self._project_root = candidate
+        if self._bundled and self._payload_path is not None:
+            _ensure_user_layout(self._payload_path, self._writable_root)
+            self._project_root = self._writable_root
+            self._project_var = tk.StringVar(value=f"{self._writable_home_display()}")
+        else:
+            initial = self._state.get("project_root", "").strip()
+            if initial:
+                candidate = Path(initial).expanduser().resolve()
+                if _looks_like_project_root(candidate):
+                    self._project_root = candidate
+            if self._project_root is None:
+                dev = Path(__file__).resolve().parents[1]
+                if _looks_like_project_root(dev):
+                    self._project_root = dev
+                    self._state["project_root"] = str(dev)
+                    _save_state(self._state)
+            self._project_var = tk.StringVar(value=str(self._project_root) if self._project_root else "未选择")
 
-        self._project_var = tk.StringVar(value=str(self._project_root) if self._project_root else "未选择")
         self._status_var = tk.StringVar(value="就绪")
 
         self._build_ui()
         self._refresh_settings_tab()
+        if self._bundled:
+            self._log_line("安装版：脚本在应用包内；配置与数据在「文稿/DigitalDairy」。无需选择项目目录。")
+
+    def _writable_home_display(self) -> str:
+        return f"{self._writable_root}（本应用数据目录，自动使用）"
 
     def _build_ui(self) -> None:
         nb = ttk.Notebook(self)
@@ -158,16 +215,21 @@ class DigitalDairyDesktop(tk.Tk):
 
         row = ttk.Frame(self._home)
         row.pack(fill="x", pady=(0, 8))
-        ttk.Label(row, text="项目根目录：").pack(side="left")
+        label = "数据与配置目录：" if self._bundled else "项目根目录："
+        ttk.Label(row, text=label).pack(side="left")
         ttk.Entry(row, textvariable=self._project_var, state="readonly").pack(side="left", fill="x", expand=True, padx=(6, 6))
-        ttk.Button(row, text="选择…", command=self._choose_project).pack(side="right")
+        if self._bundled:
+            ttk.Label(row, text="已自动", foreground="gray").pack(side="right")
+        else:
+            ttk.Button(row, text="选择…", command=self._choose_project).pack(side="right")
 
         btn_row = ttk.Frame(self._home)
         btn_row.pack(fill="x", pady=8)
         ttk.Button(btn_row, text="生成今日日报", command=self._run_daily).pack(side="left", padx=(0, 8))
         ttk.Button(btn_row, text="仅采集（Dry Run）", command=self._run_dry).pack(side="left", padx=(0, 8))
         ttk.Button(btn_row, text="打开今日总结", command=self._open_summary).pack(side="left", padx=(0, 8))
-        ttk.Button(btn_row, text="在 Finder 中打开项目", command=self._open_finder).pack(side="left")
+        finder_label = "在 Finder 中打开数据目录" if self._bundled else "在 Finder 中打开项目"
+        ttk.Button(btn_row, text=finder_label, command=self._open_finder).pack(side="left")
 
         ttk.Label(self._home, textvariable=self._status_var).pack(anchor="w", pady=(4, 4))
 
@@ -180,13 +242,21 @@ class DigitalDairyDesktop(tk.Tk):
         self._log.insert("end", text + "\n")
         self._log.see("end")
 
-    def _require_project(self) -> Path | None:
+    def _settings_target(self) -> Path | None:
+        if self._bundled:
+            return self._writable_root
         if self._project_root and _looks_like_project_root(self._project_root):
             return self._project_root
-        messagebox.showwarning(APP_NAME, "请先选择 digital-dairy 项目根目录（含 scripts/run_daily.py）。")
         return None
 
     def _choose_project(self) -> None:
+        if self._bundled:
+            messagebox.showinfo(
+                APP_NAME,
+                "安装版已将配置与数据放在「文稿/DigitalDairy」，无需选择项目。\n"
+                "若要在本机 Git 仓库里开发调试，请在终端运行：python3 app/desktop_app.py",
+            )
+            return
         path = filedialog.askdirectory(title="选择 digital-dairy 项目根目录")
         if not path:
             return
@@ -204,8 +274,8 @@ class DigitalDairyDesktop(tk.Tk):
     def _refresh_settings_tab(self) -> None:
         for child in self._settings_host.winfo_children():
             child.destroy()
-        root = self._project_root
-        if root is None or not _looks_like_project_root(root):
+        root = self._settings_target()
+        if root is None:
             ttk.Label(
                 self._settings_host,
                 text="请先在「首页」选择项目目录，再在此处编辑配置。",
@@ -214,15 +284,25 @@ class DigitalDairyDesktop(tk.Tk):
             return
         SettingsEditor(self._settings_host, root, standalone=False).pack(fill="both", expand=True)
 
+    def _daily_ctx(self) -> tuple[Path, Path] | None:
+        """(run_daily 工作目录 / 代码根, 用户可写根)。"""
+        if self._bundled and self._payload_path is not None:
+            return (self._payload_path, self._writable_root)
+        if self._project_root and _looks_like_project_root(self._project_root):
+            return (self._project_root, self._project_root)
+        return None
+
     def _run_subprocess(self, label: str, extra_args: list[str], need_api: bool) -> None:
-        root = self._require_project()
-        if root is None:
+        ctx = self._daily_ctx()
+        if ctx is None:
+            messagebox.showwarning(APP_NAME, "未找到有效的 digital-dairy 项目。开发版请在首页选择仓库根目录。")
             return
+        code_root, writable_root = ctx
         if self._busy:
             messagebox.showinfo(APP_NAME, "已有任务在运行，请稍候。")
             return
         if need_api:
-            ok, msg = _api_ready(root)
+            ok, msg = _api_ready(writable_root)
             if not ok:
                 messagebox.showwarning(APP_NAME, msg)
                 return
@@ -231,11 +311,13 @@ class DigitalDairyDesktop(tk.Tk):
         self._log_line(f"--- 开始：{label} ---")
 
         def worker() -> None:
-            cmd = [_python_cmd(root), "scripts/run_daily.py", *extra_args]
+            env = _subprocess_env()
+            env["DIGITAL_DAIRY_USER_HOME"] = str(writable_root)
+            cmd = [_python_cmd(code_root), "scripts/run_daily.py", *extra_args]
             result = subprocess.run(
                 cmd,
-                cwd=str(root),
-                env=_subprocess_env(),
+                cwd=str(code_root),
+                env=env,
                 capture_output=True,
                 text=True,
                 check=False,
@@ -267,21 +349,26 @@ class DigitalDairyDesktop(tk.Tk):
         self._run_subprocess("仅采集", ["--dry-run", "--no-notify"], need_api=False)
 
     def _open_summary(self) -> None:
-        root = self._require_project()
-        if root is None:
+        ctx = self._daily_ctx()
+        if ctx is None:
+            messagebox.showwarning(APP_NAME, "无法打开：请先完成项目配置。")
             return
+        _, writable_root = ctx
         date_text = dt.date.today().isoformat()
-        summary_path = root / "data" / "summaries" / f"{date_text}-summary.md"
+        summary_path = writable_root / "data" / "summaries" / f"{date_text}-summary.md"
         if not summary_path.exists():
             messagebox.showwarning(APP_NAME, f"未找到：{summary_path}")
             return
         subprocess.run(["open", str(summary_path)], check=False)
 
     def _open_finder(self) -> None:
-        root = self._require_project()
-        if root is None:
+        ctx = self._daily_ctx()
+        if ctx is None:
+            messagebox.showwarning(APP_NAME, "无法打开：请先完成项目配置。")
             return
-        subprocess.run(["open", str(root)], check=False)
+        code_root, writable_root = ctx
+        target = writable_root if self._bundled else code_root
+        subprocess.run(["open", str(target)], check=False)
 
 
 def main() -> None:

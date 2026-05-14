@@ -6,7 +6,7 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-from tools.common import DATA_DIR, ROOT, GrowthDimension, LifeEvent, assign_dimensions
+from tools.common import DATA_DIR, WRITABLE_ROOT, GrowthDimension, LifeEvent, assign_dimensions
 
 _DATE_IN_FILENAME = re.compile(r"(20\d{2})[-/](\d{2})[-/](\d{2})")
 
@@ -174,7 +174,7 @@ def collect_health_imports(target_date: str, dimensions: list[GrowthDimension], 
         for folder_text in raw_folders:
             folder = Path(str(folder_text)).expanduser()
             if not folder.is_absolute():
-                folder = ROOT / folder
+                folder = WRITABLE_ROOT / folder
             folder_paths.append(folder)
     else:
         folder_paths = [DATA_DIR / "health"]

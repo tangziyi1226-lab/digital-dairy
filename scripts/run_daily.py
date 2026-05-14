@@ -25,11 +25,13 @@ from tools.common import (
     DATA_DIR,
     ROOT,
     TEMPLATES_DIR,
+    WRITABLE_ROOT,
     LifeEvent,
     dedupe_life_events,
     load_dimensions,
     load_settings,
     local_day_bounds,
+    resolve_settings_argument,
     write_json,
 )
 from tools.llm import chat_completion
@@ -64,7 +66,8 @@ def target_date(settings: dict[str, object], explicit: str | None) -> str:
 def load_tool_switches(settings: dict[str, object]) -> dict[str, object]:
     path_text = settings.get("tool_switches_path")
     if isinstance(path_text, str) and path_text.strip():
-        path = ROOT / path_text
+        pt = Path(path_text)
+        path = pt if pt.is_absolute() else WRITABLE_ROOT / pt
         if path.exists():
             return json.loads(path.read_text(encoding="utf-8"))
     tools = settings.get("tools", {})
@@ -162,7 +165,7 @@ def enforce_retention(settings: dict[str, object]) -> None:
 
 def main() -> int:
     args = parse_args()
-    settings = load_settings(ROOT / args.settings)
+    settings = load_settings(resolve_settings_argument(args.settings))
     date_text = target_date(settings, args.date)
     events = collect_events(settings, date_text)
 

@@ -11,7 +11,7 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from tools.common import DATA_DIR, ROOT, load_settings
+from tools.common import DATA_DIR, WRITABLE_ROOT, load_settings, resolve_settings_argument
 from tools.notifier import send_channel_message
 from tools.qa import answer_question, latest_summary_date
 
@@ -43,7 +43,7 @@ def load_inbox_messages(channel: str | None) -> list[tuple[Path, dict[str, objec
 
 def main() -> int:
     args = parse_args()
-    settings = load_settings(ROOT / args.settings)
+    settings = load_settings(resolve_settings_argument(args.settings))
     now = dt.datetime.now().isoformat(timespec="seconds")
     count = 0
 
@@ -71,7 +71,10 @@ def main() -> int:
             if not args.dry_run:
                 send_channel_message(settings, channel, subject, answer)
             payload["answer"] = answer
-            payload["answer_path"] = str(saved_path.relative_to(ROOT))
+            try:
+                payload["answer_path"] = str(saved_path.relative_to(WRITABLE_ROOT))
+            except ValueError:
+                payload["answer_path"] = str(saved_path)
         except Exception as exc:
             payload["error"] = str(exc)
         payload["processed"] = True

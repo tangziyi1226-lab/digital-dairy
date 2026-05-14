@@ -145,7 +145,7 @@ launchctl load ~/Library/LaunchAgents/com.personal-growth-os.inbox.plist
 
 ## macOS 桌面应用 + DMG 打包
 
-项目提供带窗口的桌面入口（`app/desktop_app.py`）：首页里选项目目录、生成日报、看运行输出；「设置」里编辑 `settings.json` / `tool_switches.json`。另有可选的状态栏脚本 `app/status_bar.py`（需自行 `pip install rumps`），**默认 DMG 只打桌面版**。
+项目提供带窗口的桌面入口（`app/desktop_app.py`）。**从 DMG 安装后**：应用包内自带 `scripts/`、`tools/` 等运行代码，配置与数据默认在 `~/Documents/DigitalDairy/`，**无需再选择项目目录**即可生成日报。从源码运行时仍可手动选择其它 Git 克隆目录。另有可选的状态栏脚本 `app/status_bar.py`（需自行 `pip install rumps`），**默认 DMG 只打桌面版**。
 
 ### 1) 安装打包依赖（仅首次）
 
@@ -155,7 +155,7 @@ bash scripts/build_macos_dmg.sh
 
 脚本会自动在项目目录创建（或复用）`.venv-macos-app` 并安装打包依赖，然后生成 `.app` 和 `.dmg`。
 
-生成日报需要本机已安装项目业务依赖（与是否从 DMG 启动无关，由你选定的项目目录里的 Python 执行 `scripts/run_daily.py`）：
+生成日报时，安装版会用系统 `python3`（或你放在 `PATH` 里的解释器）执行包内脚本；若需 `markdown` / `playwright` 等可选依赖，请在本机执行：
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -174,10 +174,10 @@ bash scripts/build_macos_dmg.sh
 
 ### 3) 桌面应用功能
 
-- 选择并记住 digital-dairy 项目根目录（状态保存在 `~/Documents/DigitalDairy/state.json`）
-- 生成今日日报 / 仅采集（Dry Run），输出显示在窗口内
-- 打开今日总结、在 Finder 中打开项目
-- 「设置」标签页内嵌配置编辑器
+- **DMG 安装版**：数据与配置在 `~/Documents/DigitalDairy`（含 `state.json`），首次启动会自动从模板生成 `settings.json` / `tool_switches.json` 等；无需选择项目目录。
+- **源码运行**：若未选手动目录，会尝试自动使用当前仓库根目录；也可在首页「选择…」指向其它克隆。
+- 生成今日日报 / 仅采集（Dry Run），输出显示在窗口内；「设置」标签页编辑配置。
+- 打开今日总结、在 Finder 中打开数据目录（安装版）或项目目录（开发版）。
 
 本地调试桌面版：
 

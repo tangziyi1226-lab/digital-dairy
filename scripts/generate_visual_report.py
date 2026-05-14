@@ -9,7 +9,7 @@ SCRIPT_ROOT = Path(__file__).resolve().parents[1]
 if str(SCRIPT_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPT_ROOT))
 
-from tools.common import DATA_DIR, ROOT, load_settings
+from tools.common import DATA_DIR, load_settings, resolve_settings_argument
 from tools.visual_html_report import write_visual_report
 from tools.visual_report_screenshots import append_visual_report_screenshots_to_summary
 
@@ -29,7 +29,7 @@ def main() -> int:
     path = write_visual_report(args.date, out)
     print(path)
     if args.append_summary:
-        settings = load_settings(ROOT / args.settings)
+        settings = load_settings(resolve_settings_argument(args.settings))
         summary_path = DATA_DIR / "summaries" / f"{args.date}-summary.md"
         if not summary_path.exists():
             print(f"Missing summary file: {summary_path}", file=sys.stderr)

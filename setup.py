@@ -8,6 +8,7 @@ from setuptools import setup
 
 _SETUP_DIR = Path(__file__).resolve().parent
 _SETTINGS_UI = _SETUP_DIR / "app" / "settings_window.py"
+_APP_RUNTIME = _SETUP_DIR / ".macos-app-runtime"
 
 APP = ["app/desktop_app.py"]
 DATA_FILES: list[str] = []
@@ -65,6 +66,8 @@ def _tcl_tk_data_resources() -> list[tuple[str, list[str]]]:
 
 
 _RESOURCES: list[object] = [str(_SETTINGS_UI)]
+if (_APP_RUNTIME / "scripts" / "run_daily.py").exists():
+    _RESOURCES.append(str(_APP_RUNTIME))
 _RESOURCES.extend(_tcl_tk_data_resources())
 
 OPTIONS = {

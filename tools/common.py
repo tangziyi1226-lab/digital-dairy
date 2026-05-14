@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import shutil
 import sqlite3
 import tempfile
@@ -18,10 +19,16 @@ except ModuleNotFoundError:  # Python < 3.9 fallback
         ZoneInfo = None  # type: ignore[assignment]
 
 
-ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
-CONFIG_DIR = ROOT / "config"
-TEMPLATES_DIR = ROOT / "templates"
+_CODE_ROOT = Path(__file__).resolve().parents[1]
+_user_home_env = (os.environ.get("DIGITAL_DAIRY_USER_HOME") or "").strip()
+WRITABLE_ROOT = Path(_user_home_env).expanduser().resolve() if _user_home_env else _CODE_ROOT
+
+# 代码与只读资源（模板等）始终随 tools 包所在目录
+ROOT = _CODE_ROOT
+TEMPLATES_DIR = _CODE_ROOT / "templates"
+# 用户可写：配置与 data/（DMG 安装版指向 ~/Documents/DigitalDairy）
+DATA_DIR = WRITABLE_ROOT / "data"
+CONFIG_DIR = WRITABLE_ROOT / "config"
 TIMEZONE = ZoneInfo("Asia/Shanghai") if ZoneInfo else dt.timezone(dt.timedelta(hours=8), "Asia/Shanghai")
 CHROME_EPOCH = dt.datetime(1601, 1, 1, tzinfo=dt.timezone.utc)
 APPLE_EPOCH = dt.datetime(2001, 1, 1, tzinfo=dt.timezone.utc)
@@ -57,11 +64,25 @@ def read_json(path: Path) -> dict[str, object]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def resolve_settings_argument(path_arg: str) -> Path:
+    """CLI 里 `--settings config/settings.json` 等相对路径相对 WRITABLE_ROOT（安装版）。"""
+    p = Path(path_arg)
+    if p.is_absolute():
+        return p
+    return WRITABLE_ROOT / p
+
+
 def load_settings(path: Path | None = None) -> dict[str, object]:
-    settings_path = path or CONFIG_DIR / "settings.json"
-    if not settings_path.exists():
-        settings_path = CONFIG_DIR / "settings.example.json"
-    return read_json(settings_path)
+    primary = path or (CONFIG_DIR / "settings.json")
+    if primary.exists():
+        return read_json(primary)
+    fallback = CONFIG_DIR / "settings.example.json"
+    if fallback.exists():
+        return read_json(fallback)
+    shipped = ROOT / "config" / "settings.example.json"
+    if shipped.exists():
+        return read_json(shipped)
+    return read_json(primary)
 
 
 def load_dimensions(path: Path | None = None) -> list[GrowthDimension]:
