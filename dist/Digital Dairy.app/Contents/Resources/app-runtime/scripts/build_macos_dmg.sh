@@ -39,6 +39,13 @@ CONTENTS="${APP_PATH}/Contents"
 mkdir -p "${CONTENTS}/MacOS" "${CONTENTS}/Resources"
 cp -f "$EXE" "${CONTENTS}/MacOS/DigitalDairyNative"
 chmod +x "${CONTENTS}/MacOS/DigitalDairyNative"
+# SwiftPM 含 Resources 时会在与二进制同目录生成 *.bundle；未拷进 .app 时 Bundle.module 解析失败，启动即崩溃。
+shopt -s nullglob
+for bundle in "$BIN_DIR"/*.bundle; do
+  echo "Including SPM bundle: $bundle"
+  cp -R "$bundle" "${CONTENTS}/MacOS/"
+done
+shopt -u nullglob
 cp -f "$INFO_PLIST" "${CONTENTS}/Info.plist"
 echo "APPL????" > "${CONTENTS}/PkgInfo"
 

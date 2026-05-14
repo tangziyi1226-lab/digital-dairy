@@ -111,12 +111,25 @@ def collect_events(settings: dict[str, object], date_text: str) -> list[LifeEven
     return sorted(dedupe_life_events(events), key=lambda event: event.timestamp)
 
 
+def _escape_for_str_format(s: str) -> str:
+    """避免用户 Inbox 中的花括号破坏 str.format。"""
+    return s.replace("{", "{{").replace("}", "}}")
+
+
+def load_user_inbox_text(date_text: str) -> str:
+    path = DATA_DIR / "inbox" / f"{date_text}-today.md"
+    if not path.exists():
+        return ""
+    return path.read_text(encoding="utf-8").strip()
+
+
 def build_messages(settings: dict[str, object], date_text: str, events: list[LifeEvent]) -> list[dict[str, str]]:
     dimensions = load_dimensions()
     context = build_report_context(events, dimensions)
     template_setting = settings.get("templates", {}).get("daily_prompt")
     template_path = ROOT / str(template_setting) if template_setting else (TEMPLATES_DIR / "daily_summary_prompt.md")
     template = template_path.read_text(encoding="utf-8")
+    user_inbox_raw = load_user_inbox_text(date_text)
     user_settings = settings.get("user", {})
     user_name = str(user_settings.get("display_name") or "你")
     nickname = str(user_settings.get("nickname") or user_name)
@@ -132,6 +145,7 @@ def build_messages(settings: dict[str, object], date_text: str, events: list[Lif
         nickname=nickname,
         opening_time=opening_time,
         opening_hint=opening_hint,
+        user_inbox=_escape_for_str_format(user_inbox_raw),
         context=json.dumps(context, ensure_ascii=False, indent=2),
         events=json.dumps([event.to_dict() for event in events], ensure_ascii=False, indent=2),
         dimensions=json.dumps([dimension.__dict__ for dimension in dimensions], ensure_ascii=False, indent=2),

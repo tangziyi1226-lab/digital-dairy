@@ -140,12 +140,114 @@ private struct RunTabView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 28) {
                 HomeHeroSection()
+                HomeInboxSection()
+                HomeReplySection()
                 HomeActionGrid()
                 HomeStatusSection()
                 HomeLogSection()
             }
             .padding(24)
         }
+        .onAppear {
+            model.refreshHomePanels()
+        }
+    }
+}
+
+// MARK: - Inbox & Reply
+
+private struct HomeInboxSection: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "tray.and.arrow.down.fill")
+                    .foregroundStyle(Color(hex: "#7FA8FF"))
+                Text("今日 Inbox")
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                Spacer()
+                Button("保存") {
+                    model.saveTodayInbox()
+                }
+                .disabled(model.settingsTargetRoot() == nil)
+            }
+            Text("写下今天想让日报优先参考的线索（对应 data/inbox/日期-today.md）。保存后点「生成今日日报」会并入提示词。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            TextEditor(text: $model.todayInboxText)
+                .font(.system(.body, design: .rounded))
+                .scrollContentBackground(.hidden)
+                .frame(minHeight: 120)
+                .padding(8)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.ultraThinMaterial))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(.primary.opacity(0.06), lineWidth: 1)
+                )
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(.primary.opacity(0.05), lineWidth: 1)
+        )
+    }
+}
+
+private struct HomeReplySection: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "bubble.left.and.bubble.right.fill")
+                    .foregroundStyle(Color(hex: "#9DE7D7"))
+                Text("今日 Reply")
+                    .font(.system(.title3, design: .rounded).weight(.semibold))
+                Spacer()
+                Button("提问") {
+                    model.runHomeReply()
+                }
+                .disabled(
+                    model.busy
+                        || model.homeReplyQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                )
+            }
+            Text("基于当天已保存的总结与 events（scripts/answer_reply.py）。结果写入 data/replies/日期-reply.md，并显示在下方。")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            TextField("例如：今天最值得肯定的瞬间是什么？", text: $model.homeReplyQuestion, axis: .vertical)
+                .lineLimit(3, reservesSpace: true)
+                .textFieldStyle(.roundedBorder)
+            if model.homeReplyOutput.isEmpty {
+                Text("（尚无回答，填写问题后点「提问」）")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            } else {
+                ScrollView {
+                    Text(model.homeReplyOutput)
+                        .font(.system(.body, design: .rounded))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
+                .frame(minHeight: 100, maxHeight: 280)
+                .padding(12)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(.ultraThinMaterial))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(.primary.opacity(0.06), lineWidth: 1)
+                )
+            }
+        }
+        .padding(16)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(.primary.opacity(0.05), lineWidth: 1)
+        )
     }
 }
 

@@ -82,6 +82,10 @@ final class AppModel: ObservableObject {
     @Published var alertTitle: String = ""
     @Published var alertMessage: String = ""
     @Published var showAlert: Bool = false
+    /// 首页「今日 Inbox」草稿，保存至 data/inbox/yyyy-MM-dd-today.md，生成日报时会注入提示词。
+    @Published var todayInboxText: String = ""
+    @Published var homeReplyQuestion: String = ""
+    @Published var homeReplyOutput: String = ""
 
     private var state: [String: String] = [:]
     private let writableRoot: URL
@@ -123,6 +127,7 @@ final class AppModel: ObservableObject {
         }
 
         loadConfiguration()
+        refreshHomePanels()
     }
 
     func dayString(_ date: Date) -> String {
@@ -262,7 +267,77 @@ final class AppModel: ObservableObject {
             saveState()
             projectPathDisplay = displayProjectPath()
             loadConfiguration()
+            refreshHomePanels()
             appendLog("已选择项目：\(url.path)")
+        }
+    }
+
+    /// 从磁盘载入今日 Inbox 与 Reply（进入首页时调用，避免与运行中编辑冲突请仅在合适的时机调用）。
+    func refreshHomePanels() {
+        reloadTodayInboxFromDisk()
+        reloadHomeReplyFromDisk()
+    }
+
+    func saveTodayInbox() {
+        guard let url = todayInboxFileURL() else {
+            presentAlert(title: Self.appName, message: "未找到配置根目录，无法保存 Inbox。")
+            return
+        }
+        do {
+            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try todayInboxText.write(to: url, atomically: true, encoding: .utf8)
+            appendLog("已保存今日 Inbox：\(url.path)")
+        } catch {
+            presentAlert(title: "保存失败", message: error.localizedDescription)
+        }
+    }
+
+    func runHomeReply() {
+        let trimmed = homeReplyQuestion.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            presentAlert(title: Self.appName, message: "请先输入要提问的内容。")
+            return
+        }
+        guard let ctx = dailyContext() else {
+            presentAlert(title: Self.appName, message: "未找到有效的 digital-dairy 项目。开发版请先选择仓库根目录。")
+            return
+        }
+        guard !busy else {
+            presentAlert(title: Self.appName, message: "已有任务在运行，请稍候。")
+            return
+        }
+        let (codeRoot, writable) = ctx
+        let (ok, msg) = apiReady(writable: writable)
+        if !ok {
+            presentAlert(title: Self.appName, message: msg)
+            return
+        }
+        let day = Self.localYyyyMmDd(Date())
+        busy = true
+        statusText = "今日问答 运行中…"
+        appendLog("--- 开始：今日问答 ---")
+        let pythonCmd = pythonCommand(codeRoot: codeRoot)
+        let args = answerReplyArguments(codeRoot: codeRoot, date: day, question: trimmed)
+        let env = sanitizedEnvironment(writable: writable)
+
+        Task.detached { [weak self] in
+            let result = Self.runProcess(executable: pythonCmd, arguments: args, cwd: codeRoot, env: env)
+            await MainActor.run { [weak self] in
+                guard let self else { return }
+                self.busy = false
+                self.statusText = "就绪"
+                self.appendLog("--- 今日问答 结束 (exit \(result.code)) ---")
+                if !result.output.isEmpty {
+                    self.appendLog(result.output)
+                }
+                if result.code == 0 {
+                    self.reloadHomeReplyFromDisk()
+                    self.loadConfiguration()
+                    self.presentAlert(title: Self.appName, message: "今日问答已完成，回答已显示在首页。")
+                } else {
+                    self.presentAlert(title: Self.appName, message: "今日问答失败，请查看运行日志。")
+                }
+            }
         }
     }
 
@@ -484,6 +559,56 @@ final class AppModel: ObservableObject {
             return ["python3", "scripts/run_daily.py"] + extraArgs
         }
         return ["scripts/run_daily.py"] + extraArgs
+    }
+
+    private func answerReplyArguments(codeRoot: URL, date: String, question: String) -> [String] {
+        let cmd = pythonCommand(codeRoot: codeRoot)
+        let tail: [String] = [
+            "scripts/answer_reply.py",
+            "--settings", "config/settings.json",
+            "--date", date,
+            "--question", question,
+        ]
+        if cmd == "/usr/bin/env" {
+            return ["python3"] + tail
+        }
+        return tail
+    }
+
+    private func todayInboxFileURL() -> URL? {
+        guard let root = settingsTargetRoot() else { return nil }
+        let day = Self.localYyyyMmDd(Date())
+        return root.appendingPathComponent("data/inbox/\(day)-today.md")
+    }
+
+    private func todayReplyFileURL() -> URL? {
+        guard let root = settingsTargetRoot() else { return nil }
+        let day = Self.localYyyyMmDd(Date())
+        return root.appendingPathComponent("data/replies/\(day)-reply.md")
+    }
+
+    private func reloadTodayInboxFromDisk() {
+        guard let url = todayInboxFileURL() else {
+            todayInboxText = ""
+            return
+        }
+        if let s = try? String(contentsOf: url, encoding: .utf8) {
+            todayInboxText = s
+        } else {
+            todayInboxText = ""
+        }
+    }
+
+    private func reloadHomeReplyFromDisk() {
+        guard let url = todayReplyFileURL() else {
+            homeReplyOutput = ""
+            return
+        }
+        if let s = try? String(contentsOf: url, encoding: .utf8) {
+            homeReplyOutput = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        } else {
+            homeReplyOutput = ""
+        }
     }
 
     private func sanitizedEnvironment(writable: URL) -> [String: String] {

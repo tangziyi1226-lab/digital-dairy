@@ -1,25 +1,76 @@
-# Personal Growth OS
+# Digital Dairy（Personal Growth OS）
 
-Personal Growth OS 是一个 **AI 成长日志系统**：把「今天到底干了啥」说清楚，让人**安心收尾**，并肯定「今天不是白过」。它在固定时间从浏览器、效率工具、IDE、AI 对话等处**只读采集**痕迹，调用你配置的 LLM 生成 Markdown 总结，可选推送到邮箱或企业微信；数据默认落在本机 `data/`。
-目前支持的采集项有：
-- **浏览器历史和主流平台（b 站、知乎）分析**（Edge/Chrome）
-- **主流AI平台（ChatGPT、豆包、DeepSeek）对话标题分析**
-- **cursor、vscodeIDE 使用记录分析**
-- **TickTick 任务**（滴答清单）
-- **小米运动健康**
-## 项目是做什么的
+**Digital Dairy** 是本项目的 **macOS 桌面应用**；背后的系统叫 **Personal Growth OS**——一套 **AI 成长日志**：在固定时间从浏览器、效率工具、IDE、AI 对话等来源**只读采集**痕迹，用你配置的 LLM 生成 Markdown 日报，并可推送到邮箱或企业微信。
 
-### 想缓解什么
+## 下载 macOS（DMG）
 
-- **焦虑与脑力内耗**：温和地把散落线索串成一条**可读完的叙事**，减少「我是不是又荒废了」的反刍。
-- **信息爆炸、缺少锚点**：多源痕迹在固定时间**收束成一份**总结（可读、可推邮箱），作为清晰的「昨日坐标」。
+**[⬇ 前往 GitHub Releases 下载最新 DMG](https://github.com/tangziyi1226-lab/digital-dairy/releases/latest)**（Assets 中选 **`Digital-Dairy.dmg`**）
 
-仓库里的默认证据维度与提示词偏 **AI/CS、保研升学** 等场景；你可在 **`config/`** 里改成自己关心的领域与口吻。
+| 方式 | 说明 |
+|------|------|
+| **发布页（推荐）** | 打开 [**Releases 最新页**](https://github.com/tangziyi1226-lab/digital-dairy/releases/latest)，在 Assets 中下载 **`Digital-Dairy.dmg`**，把 **Digital Dairy** 拖到「应用程序」。 |
+| **自己打包** | 克隆本仓库后执行 `bash scripts/build_macos_dmg.sh`，在 **`dist/Digital-Dairy.dmg`** 得到安装镜像。 |
 
+**系统要求：** macOS **14（Sonoma）及以上**。安装版会在 **`~/Documents/DigitalDairy/`** 读写配置与数据（含 `state.json`），**无需**选择项目目录；首次启动会从模板生成 `settings.json`、`tool_switches.json` 等。生成日报仍需本机可用的 **`python3`**；如需完整依赖，在任意终端执行：`python3 -m pip install -r requirements.txt`（详见下文）。
 
-**下面从「快速开始」上手即可**；各字段含义、`config/` 怎么改、邮箱怎么配等，见文末 **[详细配置与自定义](#详细配置与自定义)**。
+---
 
-## 快速开始
+## Digital Dairy 适合解决什么
+
+- **焦虑与脑力内耗**：把零散线索收成一条**读得完的叙事**，减轻「今天又荒废了吗」式的反刍。
+- **信息太多、缺少锚点**：多源痕迹每天在固定节奏里**落成一份总结**（可读、可发邮箱），当作清晰的「昨日坐标」。
+
+仓库默认的成长维度与提示词偏 **AI / CS、升学规划** 等场景；你可以在 **`config/`** 里改成自己的领域与口吻。
+
+---
+
+## 功能一览（桌面 App + 命令行）
+
+**桌面 App（SwiftUI）**
+
+- **工作台**：一键生成当日日报 / 仅采集（Dry Run）、窗口内日志。
+- **Markdown 日报**：侧栏阅览当日总结。
+- **嵌入式图表**：基于当日 `events.json` 的 **Swift Charts** 可视化（默认不走 HTML / Playwright 截图链路）。
+- **偏好设置**：常规、API、采集开关、通知、高级等**表单化编辑**，写入 `~/Documents/DigitalDairy`（或开发模式下所选仓库）。
+- **外观**：系统毛玻璃材质 + 渐变主题色。
+- **快捷动作**：打开今日总结、在 Finder 中打开数据或项目目录。
+
+**CLI / 后台能力与数据源**
+
+| 能力 | 说明 |
+|------|------|
+| **每日采集 + 总结** | `run_daily.py` 聚合当日事件，按提示词与成长维度生成 Markdown。 |
+| **多源采集器** | 浏览器（Chrome / Edge / Safari）、哔哩哔哩 / 知乎 / 小红书、滴答专注、Cursor / VS Code、ChatGPT / 豆包 / DeepSeek、手动与手机导入、小米运动健康等（见 `config/tool_switches.example.json`）。 |
+| **可选可视化** | HTML 报告 + Playwright 长截图附录到总结（CLI 场景）。 |
+| **通知** | SMTP 邮件（可 Markdown→HTML + 内联图）、企业微信 Webhook。 |
+| **问答与 Inbox** | `answer_reply.py`；`add_inbox_message.py` + `process_inbox.py`。 |
+| **定时（macOS）** | `install_launchd.py`：日报 + Inbox 轮询。 |
+| **保留策略** | `data_retention.daily_summaries_keep_days` 清理旧总结。 |
+
+---
+
+## 架构说明
+
+```text
+Digital Dairy.app          ← SwiftPM 目标 macOS/DigitalDairyNative（SwiftUI + AppKit）
+└── Contents/Resources/app-runtime/
+        ├── scripts/       ← run_daily.py 等（由 App 调用）
+        ├── tools/         ← 采集、LLM、通知
+        ├── templates/     ← daily_summary_prompt.md 等
+        └── config/        ← 示例与初始模板（运行时会拷到或使用文稿目录）
+
+~/Documents/DigitalDairy/  ← 安装版真实配置与 data（密钥不落仓库）
+```
+
+- **原生壳**：负责窗口、导航、读写偏好、触发子进程执行包内 **`scripts/run_daily.py`**（逻辑与命令行一致）。
+- **Python 运行时**：使用系统 **`python3`**（开发时亦可优先仓库 `.venv`）；App 打包会把完整仓库副本放进 **`app-runtime`**，便于脚本解析模板与工具模块。
+- **旧栈**：Tkinter 桌面 `app/desktop_app.py`、py2app 脚本仍保留作参考，默认推荐使用上文 DMG / SwiftUI 流程。
+
+更细的目录约定见下文 **「目录结构（简）」**。完整字段说明、邮箱与 `config/` 自定义见 **[详细配置与自定义](#详细配置与自定义)**。
+
+---
+
+## 命令行快速开始
 
 ### 1. 环境与依赖
 
@@ -89,24 +140,11 @@ python3 scripts/run_daily.py --date 2026-05-13 --dry-run
 
 ---
 
-
 ### 项目特点
 
 - **数据归属你**：事件与总结在本地；API Key 优先环境变量。
 - **轻量可组合**：`tool_switches` 按需开采集器。
 - **可演进协作**：欢迎 Issue / PR 扩展采集与文档。
-
-## 功能一览
-
-| 能力 | 说明 |
-|------|------|
-| **每日采集 + 总结** | `run_daily.py` 聚合当日事件，按提示词与成长维度生成 Markdown。 |
-| **多源采集器** | 浏览器、资讯站、滴答专注、Cursor / VS Code、ChatGPT / 豆包 / DeepSeek 等（见下表）。 |
-| **可选可视化** | HTML 报告 + Playwright 长截图附录到总结。 |
-| **通知** | SMTP 邮件（可 Markdown→HTML + 内联图）、企业微信 Webhook。 |
-| **问答与 Inbox** | `answer_reply.py`；`add_inbox_message.py` + `process_inbox.py` 批量回发。 |
-| **定时（macOS）** | `install_launchd.py`：日报 + Inbox 轮询。 |
-| **保留策略** | `data_retention.daily_summaries_keep_days` 清理旧总结。 |
 
 ## 支持的数据源（工具与平台）
 
@@ -143,65 +181,21 @@ launchctl load ~/Library/LaunchAgents/com.personal-growth-os.inbox.plist
 
 开场白话术等在 `settings.json` 的 `messages.daily_opening_hint`；总结结构在 `templates/daily_summary_prompt.md`。
 
-## macOS 桌面应用 + DMG 打包
+## 从源码构建 macOS 应用（`.app` / DMG）
 
-默认桌面端已改为 **原生 SwiftUI + AppKit 材质**（`macOS/DigitalDairyNative`）：使用 `NSVisualEffectView` 与系统 `Material` 叠加渐变，观感接近 macOS 的毛玻璃/液态层次；业务仍通过本机 `python3` 调用仓库内 `scripts/run_daily.py`（与原先逻辑一致）。
-
-**从 DMG 安装后**：`Contents/Resources/app-runtime/` 内含 `scripts/`、`tools/` 等；配置与数据仍在 `~/Documents/DigitalDairy/`，**无需选择项目目录**。从源码调试时，应用会尝试自动识别仓库根目录，也可在界面里手动选择。
-
-旧版 **Tkinter 桌面**（`app/desktop_app.py`）仍保留作参考。旧版 **py2app** 打包脚本见 `scripts/build_macos_dmg_py2app.sh`。
-
-另有可选的状态栏脚本 `app/status_bar.py`（需自行 `pip install rumps`）。
-
-### 1) 构建 `.dmg`（SwiftUI 原生壳 + Python 运行时）
-
-需要本机已安装 **Xcode Command Line Tools** 或 **Xcode**（提供 `swift`）。
+前置：**Xcode** 或 **Command Line Tools**（需要 `swift`）。桌面端源码在 **`macOS/DigitalDairyNative`**（SwiftUI + AppKit；上文 **架构说明** 已概述职责）。
 
 ```bash
 bash scripts/build_macos_dmg.sh
 ```
 
-该脚本会：
+脚本会：用 SwiftPM **release** 编译原生壳 → 通过 **`scripts/bundle_app_runtime.sh`** 把仓库内 **`scripts/`、`tools/`、`templates/`、`config/`、`app/`、`fig/`、`macOS/`、`data/` 骨架**以及根目录 **`README.md`、`requirements*.txt`、`setup.py`** 同步进 **`Digital Dairy.app/Contents/Resources/app-runtime/`** → 生成 **`dist/Digital Dairy.app`** 与 **`dist/Digital-Dairy.dmg`**。
 
-- 用 SwiftPM 编译 `macOS/DigitalDairyNative`
-- 通过 `scripts/bundle_app_runtime.sh` 将 **完整项目**（`scripts/`、`tools/`、`templates/`、`config/`、`app/`、`fig/`、`macOS/DigitalDairyNative/` 源码、`data/` 目录骨架，以及根目录 `README.md`、`requirements*.txt`、`setup.py`）同步到 `app-runtime/` 并打入 `Digital Dairy.app`
-- 生成 `dist/Digital-Dairy.dmg`
+安装后可在 App **显示包内容 → Contents → Resources → app-runtime** 浏览上述文件；**个人数据与密钥仍在 `~/Documents/DigitalDairy`**。生成日报时使用系统 **`python3`**（开发时常优先仓库 **`.venv/bin/python3`**）；可选依赖：`python3 -m pip install -r requirements.txt`。
 
-安装后可在 `Digital Dairy.app` 的 **显示包内容 → Contents → Resources → app-runtime** 中浏览上述文件。个人运行数据与密钥仍仅在 `~/Documents/DigitalDairy`。
+**调试：** Xcode 打开 `macOS/DigitalDairyNative/Package.swift`，或 `cd macOS/DigitalDairyNative && swift run`。若未识别仓库根，可在 App 内 **「选择项目目录…」**。
 
-生成日报时，安装版会用系统 `python3`（或你放在 `PATH` 里的解释器）执行包内脚本；若需 `markdown` / `playwright` 等可选依赖，请在本机执行：
-
-```bash
-python3 -m pip install -r requirements.txt
-```
-
-### 2) 生成物
-
-- `dist/Digital Dairy.app`
-- `dist/Digital-Dairy.dmg`
-
-### 3) 桌面应用功能
-
-- **DMG 安装版**：数据与配置在 `~/Documents/DigitalDairy`（含 `state.json`），首次启动会自动从模板生成 `settings.json` / `tool_switches.json` 等；无需选择项目目录。
-- **源码 / 调试运行**：在 Xcode 中打开 `macOS/DigitalDairyNative/Package.swift`，或执行 `cd macOS/DigitalDairyNative && swift run`；若未识别到仓库根，可在界面「选择项目目录…」指向克隆路径。
-- 生成今日日报 / 仅采集（Dry Run），日志在窗口内展示；侧栏提供**表单化偏好设置**（常规、API、采集开关、通知、高级），以及 **Markdown 日报阅览** 与基于当日 `events.json` 的 **Swift Charts 嵌入式图表**（默认不再依赖 HTML/Playwright 截图附录；原生应用调用日报时会附加 `--no-visual-screenshots`）。
-- 打开今日总结、在 Finder 中打开数据目录（安装版）或项目目录（开发版）。
-
-旧版 Tk 入口（仍可用）：
-
-```bash
-python3 app/desktop_app.py
-```
-
-> 说明：日报任务会优先使用项目内 `.venv/bin/python3`，否则使用系统 `python3`（通过 `/usr/bin/env python3` 调用）。
-
-### 4) 旧版 py2app（Tk 壳）打包
-
-若仍需 Tkinter + py2app 的 `.app`：
-
-```bash
-bash scripts/build_macos_dmg_py2app.sh
-```
+**旧栈：** Tkinter `python3 app/desktop_app.py`；py2app 打包 `bash scripts/build_macos_dmg_py2app.sh`。可选菜单栏脚本 **`app/status_bar.py`**（需 `pip install rumps`）。
 
 ## 问答与 Inbox
 
