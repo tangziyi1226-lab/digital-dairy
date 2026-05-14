@@ -20,12 +20,7 @@ fi
 rm -rf build dist
 
 RUNTIME="${ROOT_DIR}/.macos-app-runtime"
-rm -rf "$RUNTIME"
-mkdir -p "$RUNTIME"
-for d in scripts tools templates config; do
-  rsync -a "${ROOT_DIR}/${d}/" "${RUNTIME}/${d}/"
-done
-find "$RUNTIME" -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+"${ROOT_DIR}/scripts/bundle_app_runtime.sh" "$RUNTIME"
 
 "$PYTHON_BIN" setup.py py2app
 

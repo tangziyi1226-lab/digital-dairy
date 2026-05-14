@@ -1,0 +1,5 @@
+# Markdown 总结邮件：渲染为 HTML 并内联本地图片（未安装时会退回纯文本）
+markdown>=3.5
+
+# 可视化 HTML 报告附录长截图（run_daily / generate_visual_report；需再执行: python -m playwright install chromium）
+playwright>=1.41.0

@@ -19,12 +19,7 @@ rm -rf dist build
 mkdir -p dist
 
 RUNTIME="${ROOT_DIR}/.macos-app-runtime"
-rm -rf "$RUNTIME"
-mkdir -p "$RUNTIME"
-for d in scripts tools templates config; do
-  rsync -a "${ROOT_DIR}/${d}/" "${RUNTIME}/${d}/"
-done
-find "$RUNTIME" -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+"${ROOT_DIR}/scripts/bundle_app_runtime.sh" "$RUNTIME"
 
 # 先全量 clean 再编译，避免增量缓存导致 .app 仍是旧界面。
 (
