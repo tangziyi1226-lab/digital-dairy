@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
 APP_NAME="Digital Dairy.app"
-DMG_NAME="Digital-Dairy-StatusBar.dmg"
+DMG_NAME="Digital-Dairy.dmg"
 DMG_STAGING="dist/dmg-staging"
 VENV_DIR="${ROOT_DIR}/.venv-macos-app"
 PYTHON_BIN="${VENV_DIR}/bin/python3"

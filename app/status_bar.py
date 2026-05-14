@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 from pathlib import Path
 
 import rumps
@@ -68,6 +69,40 @@ def _pick_file_with_osascript() -> Path | None:
     return Path(file_path)
 
 
+def _is_frozen_app() -> bool:
+    return getattr(sys, "frozen", False) is not False
+
+
+def _bundle_resource_dir() -> Path | None:
+    raw = os.environ.get("RESOURCEPATH")
+    return Path(raw) if raw else None
+
+
+def _bundle_python_executable() -> Path | None:
+    if not _is_frozen_app():
+        return None
+    macos = Path(sys.executable).resolve().parent
+    embedded = macos / "python"
+    return embedded if embedded.exists() else None
+
+
+def _settings_script_path(project_root: Path) -> Path | None:
+    bundle_dir = _bundle_resource_dir()
+    if bundle_dir is not None:
+        bundled = bundle_dir / "settings_window.py"
+        if bundled.exists():
+            return bundled
+    candidate = project_root / "app" / "settings_window.py"
+    return candidate if candidate.exists() else None
+
+
+def _subprocess_env() -> dict[str, str]:
+    env = os.environ.copy()
+    # 从 .app 启动时 PATH 常过短，子进程找不到 python3 或动态库。
+    env.setdefault("PATH", "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/usr/local/bin")
+    return env
+
+
 class StatusBarApp(rumps.App):
     def __init__(self) -> None:
         super().__init__(APP_NAME, title="", quit_button=None, template=True)
@@ -125,11 +160,18 @@ class StatusBarApp(rumps.App):
         return "python3"
 
     def _python_cmd_for_gui(self, root: Path) -> str:
-        preferred = self._python_cmd(root)
-        check_cmd = [preferred, "-c", "import tkinter"]
-        result = subprocess.run(check_cmd, capture_output=True, text=True, check=False)
-        if result.returncode == 0:
-            return preferred
+        env = _subprocess_env()
+        candidates = [self._python_cmd(root), "/usr/bin/python3"]
+        which_py = shutil.which("python3")
+        if which_py:
+            candidates.append(which_py)
+        candidates.append("python3")
+        for exe in candidates:
+            if not exe:
+                continue
+            result = subprocess.run([exe, "-c", "import tkinter"], capture_output=True, text=True, check=False, env=env)
+            if result.returncode == 0:
+                return exe
         return "python3"
 
     def _status_symbol(self) -> str:
@@ -198,7 +240,14 @@ class StatusBarApp(rumps.App):
         def worker() -> None:
             try:
                 command = [self._python_cmd(root), "scripts/run_daily.py", *extra_args]
-                result = subprocess.run(command, cwd=root, capture_output=True, text=True, check=False)
+                result = subprocess.run(
+                    command,
+                    cwd=root,
+                    env=_subprocess_env(),
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
                 if result.returncode == 0:
                     rumps.notification(APP_NAME, f"{label}完成", "可点击“打开今日日报”查看结果。")
                 else:
@@ -224,12 +273,36 @@ class StatusBarApp(rumps.App):
         root = self._require_project_root()
         if root is None:
             return
-        script_path = root / "app" / "settings_window.py"
-        if not script_path.exists():
-            rumps.alert(APP_NAME, "缺少设置界面脚本", f"未找到 {script_path}")
+        script_path = _settings_script_path(root)
+        if script_path is None:
+            rumps.alert(APP_NAME, "缺少设置界面脚本", "未找到 settings_window.py，请重新安装应用或拉取最新代码。")
             return
-        command = [self._python_cmd_for_gui(root), str(script_path), "--project-root", str(root)]
-        subprocess.Popen(command, cwd=root)
+        bundle_python = _bundle_python_executable()
+        if bundle_python is not None:
+            command = [str(bundle_python), str(script_path), "--project-root", str(root)]
+        else:
+            command = [self._python_cmd_for_gui(root), str(script_path), "--project-root", str(root)]
+        env = _subprocess_env()
+        try:
+            proc = subprocess.Popen(command, cwd=str(root), env=env)
+        except OSError as exc:
+            rumps.alert(APP_NAME, "无法启动设置界面", str(exc))
+            return
+
+        def watch_exit() -> None:
+            time.sleep(1.2)
+            code = proc.poll()
+            if code is None:
+                return
+            if code != 0:
+                rumps.alert(
+                    APP_NAME,
+                    "设置界面启动失败",
+                    f"进程已退出（退出码 {code}）。请在终端运行下面命令查看报错：\n\n"
+                    f'"{command[0]}" "{command[1]}" --project-root "{root}"',
+                )
+
+        threading.Thread(target=watch_exit, daemon=True).start()
 
     @rumps.clicked("打开今日日报")
     def open_today_summary(self, _: rumps.MenuItem) -> None:

@@ -125,6 +125,6 @@ def _setup_openssl():
 _setup_openssl()
 
 
-DEFAULT_SCRIPT='status_bar.py'
+DEFAULT_SCRIPT='desktop_app.py'
 SCRIPT_MAP={}
 _run()

@@ -11,7 +11,7 @@
 	<key>CFBundleIconFile</key>
 	<string>Digital Dairy</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.personal-growth-os.statusbar</string>
+	<string>com.personal-growth-os.digital-dairy</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -26,10 +26,10 @@
 	<string>1.0.0</string>
 	<key>LSHasLocalizedDisplayName</key>
 	<false/>
-	<key>LSUIElement</key>
-	<true/>
 	<key>NSAppleScriptEnabled</key>
 	<false/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright not specified</string>
 	<key>NSMainNibFile</key>

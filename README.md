@@ -143,9 +143,9 @@ launchctl load ~/Library/LaunchAgents/com.personal-growth-os.inbox.plist
 
 开场白话术等在 `settings.json` 的 `messages.daily_opening_hint`；总结结构在 `templates/daily_summary_prompt.md`。
 
-## macOS 状态栏工具 + DMG 打包
+## macOS 桌面应用 + DMG 打包
 
-项目已提供一个最小状态栏入口（`app/status_bar.py`）和打包脚本，可在 macOS 生成可分发的 `.dmg`。
+项目提供带窗口的桌面入口（`app/desktop_app.py`）：首页里选项目目录、生成日报、看运行输出；「设置」里编辑 `settings.json` / `tool_switches.json`。另有可选的状态栏脚本 `app/status_bar.py`（需自行 `pip install rumps`），**默认 DMG 只打桌面版**。
 
 ### 1) 安装打包依赖（仅首次）
 
@@ -155,7 +155,7 @@ bash scripts/build_macos_dmg.sh
 
 脚本会自动在项目目录创建（或复用）`.venv-macos-app` 并安装打包依赖，然后生成 `.app` 和 `.dmg`。
 
-如果你还要让状态栏里“生成日报”功能可用，请另外在项目运行环境安装业务依赖：
+生成日报需要本机已安装项目业务依赖（与是否从 DMG 启动无关，由你选定的项目目录里的 Python 执行 `scripts/run_daily.py`）：
 
 ```bash
 python3 -m pip install -r requirements.txt
@@ -170,16 +170,22 @@ bash scripts/build_macos_dmg.sh
 生成物在：
 
 - `dist/Digital Dairy.app`
-- `dist/Digital-Dairy-StatusBar.dmg`
+- `dist/Digital-Dairy.dmg`
 
-### 3) 状态栏工具包含功能
+### 3) 桌面应用功能
 
-- 立即生成今日日报（等价于运行 `scripts/run_daily.py`）
-- 仅采集（Dry Run）
-- 打开今日日报
-- 设置并保存项目根目录（首次启动需要）
+- 选择并记住 digital-dairy 项目根目录（状态保存在 `~/Documents/DigitalDairy/state.json`）
+- 生成今日日报 / 仅采集（Dry Run），输出显示在窗口内
+- 打开今日总结、在 Finder 中打开项目
+- 「设置」标签页内嵌配置编辑器
 
-> 说明：状态栏工具会优先使用项目内 `.venv/bin/python3`，否则退回系统 `python3`。
+本地调试桌面版：
+
+```bash
+python3 app/desktop_app.py
+```
+
+> 说明：日报任务会优先使用项目内 `.venv/bin/python3`，否则使用系统 `python3`。
 
 ## 问答与 Inbox
 

@@ -10,25 +10,37 @@
   },
   "xiaohongshu_history": {
     "enabled": true,
-    "browsers": ["edge", "chrome"]
+    "browsers": [
+      "edge",
+      "chrome"
+    ]
   },
   "cursor": {
     "enabled": true
   },
   "vscode": {
-    "enabled": false
+    "enabled": true
   },
   "chatgpt": {
     "enabled": true,
-    "browsers": ["edge", "chrome"]
+    "browsers": [
+      "edge",
+      "chrome"
+    ]
   },
   "doubao": {
     "enabled": true,
-    "browsers": ["edge", "chrome"]
+    "browsers": [
+      "edge",
+      "chrome"
+    ]
   },
   "deepseek": {
     "enabled": true,
-    "browsers": ["edge", "chrome"]
+    "browsers": [
+      "edge",
+      "chrome"
+    ]
   },
   "manual_imports": {
     "enabled": true
@@ -38,6 +50,8 @@
   },
   "mi_health": {
     "enabled": true,
-    "folders": ["data/health"]
+    "folders": [
+      "data/health"
+    ]
   }
 }
