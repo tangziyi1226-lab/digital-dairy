@@ -28,12 +28,14 @@
 
 **桌面 App（SwiftUI）**
 
-- **工作台**：一键生成当日日报 / 仅采集（Dry Run）、窗口内日志。
-- **Markdown 日报**：侧栏阅览当日总结。
-- **嵌入式图表**：基于当日 `events.json` 的 **Swift Charts** 可视化（默认不走 HTML / Playwright 截图链路）。
-- **偏好设置**：常规、API、采集开关、通知、高级等**表单化编辑**，写入 `~/Documents/DigitalDairy`（或开发模式下所选仓库）。
-- **外观**：系统毛玻璃材质 + 渐变主题色。
-- **快捷动作**：打开今日总结、在 Finder 中打开数据或项目目录。
+侧栏分三类：**工作台**（首页、日报阅览、数据图表）、**偏好设置**（常规与日程、模型与 API、采集数据源、通知、高级与保留、成长维度、模版设置）、**其他**（外观与主题、关于）。支持 **⌘S** 保存当前偏好页到磁盘，**重新载入** 从磁盘刷新表单。
+
+- **首页**：大按钮触发 **生成今日日报**（调用包内 `run_daily.py`）与 **仅采集（Dry Run）**；**今日感想** 将草稿保存到 `data/inbox/YYYY-MM-DD-today.md`，生成日报时会并入提示词；**今日提问** 在窗口内发起问答，等价 `scripts/answer_reply.py`，回答写入 `data/replies/YYYY-MM-DD-reply.md` 并显示在下方；底部为运行状态与日志。
+- **日报阅览**：按 **日期** 打开 `data/summaries/…-summary.md`，用 **MarkdownUI** 阅读主题（衬线正文、弱化正文底块；渲染前对中文换行与标题等做预处理）。**日报阅览** 与 **数据图表** 共用同一日期选择，便于同一天对照。
+- **数据图表**：读取当日 `data/events/…-events.json`，用 **Swift Charts** 做偏叙事、节奏与注意力流的侧写（刻意弱化精确条数与 KPI 对比）；图例中的成长维度名称与 **偏好 · 成长维度** 配置联动。App 内默认不依赖 HTML / Playwright 截图链路（CLI 仍可生成可视化附录）。
+- **偏好设置**：上述各页以表单编辑 `settings.json`、`tool_switches.json`、`growth_dimensions.json`，以及日报 **模版路径 / 模版库**（`templates.daily_prompt`、`templates.prompt_presets` 等）；安装版写入 **`~/Documents/DigitalDairy`**，开发模式下写入所选仓库根（需先 **选择项目目录…**）。
+- **外观与主题**：系统毛玻璃材质 + 可持久化的渐变主题色（`state.json`）。
+- **快捷入口**：首页可 **查看今日日报**（系统默认方式打开 Markdown）、**在 Finder 中打开** 数据或项目目录。
 
 **CLI / 后台能力与数据源**
 
@@ -43,7 +45,7 @@
 | **多源采集器** | 浏览器（Chrome / Edge / Safari）、哔哩哔哩 / 知乎 / 小红书、滴答专注、Cursor / VS Code、ChatGPT / 豆包 / DeepSeek、手动与手机导入、小米运动健康等（见 `config/tool_switches.example.json`）。 |
 | **可选可视化** | HTML 报告 + Playwright 长截图附录到总结（CLI 场景）。 |
 | **通知** | SMTP 邮件（可 Markdown→HTML + 内联图）、企业微信 Webhook。 |
-| **问答与 Inbox** | `answer_reply.py`；`add_inbox_message.py` + `process_inbox.py`。 |
+| **问答与 Inbox** | `answer_reply.py`；`add_inbox_message.py` + `process_inbox.py`；桌面端 **首页** 可直接编辑 **今日感想**（`…-today.md`）并运行 **今日提问**（单条问答，不等价于队列轮询）。 |
 | **定时（macOS）** | `install_launchd.py`：日报 + Inbox 轮询。 |
 | **保留策略** | `data_retention.daily_summaries_keep_days` 清理旧总结。 |
 
@@ -199,7 +201,9 @@ bash scripts/build_macos_dmg.sh
 
 ## 问答与 Inbox
 
-**单条：**
+**桌面 App**：首页 **今日感想** 写入 `data/inbox/YYYY-MM-DD-today.md`，`run_daily.py` 生成总结时会把该文件内容经安全转义后填入提示词占位符 `user_inbox`；**今日提问** 调用包内 `answer_reply.py`，结果写入 `data/replies/YYYY-MM-DD-reply.md`。
+
+**单条（CLI）：**
 
 ```bash
 python3 scripts/answer_reply.py --question "我今天主要成长在哪里？"
@@ -228,6 +232,7 @@ python3 scripts/process_inbox.py
 | `messages.daily_opening_hint` | 开场模板；支持 `{opening_time}`、`{nickname}`、`{user_name}`。 |
 | `api` | `base_url`、`model`、温度、`max_tokens`；`api_key_env` / `api_key`。 |
 | `templates.daily_prompt` | 总结提示词 Markdown 路径，默认 `templates/daily_summary_prompt.md`。 |
+| `templates.prompt_presets` | 日报模版库（多路径与标签；App **模版设置** 可维护）。 |
 | `tool_switches_path` | 工具开关文件路径，默认 `config/tool_switches.json`。 |
 | `data_retention` | 如 `daily_summaries_keep_days`。 |
 | `visual_report` | 可视化 HTML 与截图参数（见下节「`settings.json` 常用字段」）。 |

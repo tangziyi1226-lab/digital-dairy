@@ -164,7 +164,7 @@ private struct HomeInboxSection: View {
             HStack {
                 Image(systemName: "tray.and.arrow.down.fill")
                     .foregroundStyle(Color(hex: "#7FA8FF"))
-                Text("今日 Inbox")
+                Text("今日感想")
                     .font(.system(.title3, design: .rounded).weight(.semibold))
                 Spacer()
                 Button("保存") {
@@ -172,7 +172,7 @@ private struct HomeInboxSection: View {
                 }
                 .disabled(model.settingsTargetRoot() == nil)
             }
-            Text("写下今天想让日报优先参考的线索（对应 data/inbox/日期-today.md）。保存后点「生成今日日报」会并入提示词。")
+            Text("写下今天想让日报参考的线索（对应 data/inbox/日期-today.md）。保存后点「生成今日日报」会并入提示词。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -204,7 +204,7 @@ private struct HomeReplySection: View {
             HStack {
                 Image(systemName: "bubble.left.and.bubble.right.fill")
                     .foregroundStyle(Color(hex: "#9DE7D7"))
-                Text("今日 Reply")
+                Text("今日提问")
                     .font(.system(.title3, design: .rounded).weight(.semibold))
                 Spacer()
                 Button("提问") {
@@ -215,7 +215,7 @@ private struct HomeReplySection: View {
                         || model.homeReplyQuestion.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 )
             }
-            Text("基于当天已保存的总结与 events（scripts/answer_reply.py）。结果写入 data/replies/日期-reply.md，并显示在下方。")
+            Text("基于当天已保存的总结与 events（scripts/answer_reply.py）进行问答。结果写入 data/replies/日期-reply.md，并显示在下方。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
