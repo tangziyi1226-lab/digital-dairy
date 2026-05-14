@@ -384,6 +384,56 @@ final class AppModel: ObservableObject {
         return nil
     }
 
+    /// 项目根下的相对路径文件 URL（`daily_prompt` 等）。
+    func fileURLForProjectRelativePath(_ relativePath: String) -> URL? {
+        guard let root = settingsTargetRoot() else { return nil }
+        let t = relativePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return nil }
+        if t.hasPrefix("/") {
+            return URL(fileURLWithPath: t)
+        }
+        return root.appendingPathComponent(t)
+    }
+
+    func readProjectTextFile(relativePath: String) throws -> String {
+        guard let u = fileURLForProjectRelativePath(relativePath) else {
+            throw NSError(domain: "AppModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "无效路径"])
+        }
+        return try String(contentsOf: u, encoding: .utf8)
+    }
+
+    func writeProjectTextFile(relativePath: String, content: String) throws {
+        guard let u = fileURLForProjectRelativePath(relativePath) else {
+            throw NSError(domain: "AppModel", code: 1, userInfo: [NSLocalizedDescriptionKey: "无效路径"])
+        }
+        try FileManager.default.createDirectory(at: u.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try content.write(to: u, atomically: true, encoding: .utf8)
+    }
+
+    /// 在 `config/growth_dimensions.json` 不存在时写入与仓库一致的示例维度。
+    func createGrowthDimensionsFromExample() {
+        guard settingsTargetRoot() != nil else {
+            presentAlert(title: Self.appName, message: "未找到项目根目录。")
+            return
+        }
+        let url = fileURLForProjectRelativePath("config/growth_dimensions.json")!
+        if FileManager.default.fileExists(atPath: url.path) {
+            presentAlert(
+                title: Self.appName,
+                message: "已存在 config/growth_dimensions.json，未覆盖。若要重置请先在 Finder 中删除该文件。"
+            )
+            return
+        }
+        do {
+            let doc = try GrowthDimensionsFile.makeExampleFromEmbedded()
+            try doc.save(to: url)
+            loadConfiguration()
+            presentAlert(title: Self.appName, message: "已创建示例 growth_dimensions.json，可在偏好中编辑后保存。")
+        } catch {
+            presentAlert(title: "失败", message: error.localizedDescription)
+        }
+    }
+
     private func toolSwitchesFileURL(projectRoot: URL, settings: AppSettings?) -> URL {
         guard let s = settings else {
             return resolvedToolSwitchesURLLegacy(projectRoot: projectRoot)

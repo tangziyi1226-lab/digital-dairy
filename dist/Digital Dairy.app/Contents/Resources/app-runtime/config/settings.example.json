@@ -23,7 +23,13 @@
     "max_tokens": 4200
   },
   "templates": {
-    "daily_prompt": "templates/daily_summary_prompt.md"
+    "daily_prompt": "templates/daily_summary_prompt.md",
+    "prompt_presets": [
+      { "id": "standard", "label": "标准日报", "path": "templates/daily_summary_prompt.md" },
+      { "id": "minimal", "label": "精简要点", "path": "templates/presets/minimal_daily.md" },
+      { "id": "wellness", "label": "情绪与健康", "path": "templates/presets/wellness_focus.md" },
+      { "id": "work", "label": "执行与交付", "path": "templates/presets/work_execution.md" }
+    ]
   },
   "tool_switches_path": "config/tool_switches.json",
   "data_retention": {

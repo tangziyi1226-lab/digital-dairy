@@ -61,3 +61,16 @@ struct GrowthDimensionsFile: Codable, Equatable {
         try data.write(to: url, options: .atomic)
     }
 }
+
+// MARK: - 示例（应用内「创建示例」）
+
+extension GrowthDimensionsFile {
+    private static let embeddedExampleJSON = #"""
+    {"dimensions":[{"description":"夏令营、导师、院所、报名系统、申请材料与路径选择。","enabled":true,"hosts":["ucas.ac.cn","ict.cas.cn","buaa.edu.cn","bupt.edu.cn"],"id":"admission","keywords":["夏令营","招生","报名","导师","申请","推免"],"name":"升学与申请"},{"description":"论文、模型、数据集、研究方向、实验复现与科研阅读。","enabled":true,"hosts":["scholar.google.com","arxiv.org","openaccess.thecvf.com"],"id":"ai_research","keywords":["ICLR","ICCV","CVPR","论文","paper","模型","深度学习"],"name":"AI 科研"},{"description":"GitHub、API、云服务、开发环境、agent 工具和工程协作。","enabled":true,"hosts":["github.com","openrouter.ai","aistudio.google.com","aliyun.com"],"id":"engineering_tools","keywords":["GitHub","pull request","SSH","API","Cursor","AI Studio","阿里云","配置","仓库"],"name":"工程与工具链"},{"description":"日记、人生叙事、焦虑缓解、长期目标与自我观察。","enabled":true,"hosts":[],"id":"personal_growth","keywords":["diary","journal","growth","人生","成长","焦虑","复盘","目标","叙事"],"name":"个人成长与自我理解"},{"description":"睡眠、运动、饮食、身体状态与恢复节奏。","enabled":true,"hosts":[],"id":"health_recovery","keywords":["健康","睡眠","运动","饮食","health","sleep","exercise"],"name":"健康与恢复"},{"description":"未归入明确成长维度的信息输入。","enabled":true,"hosts":[],"id":"general_input","keywords":[],"name":"一般信息输入"}]}
+    """#
+
+    static func makeExampleFromEmbedded() throws -> GrowthDimensionsFile {
+        let data = Data(Self.embeddedExampleJSON.utf8)
+        return try JSONDecoder().decode(GrowthDimensionsFile.self, from: data)
+    }
+}

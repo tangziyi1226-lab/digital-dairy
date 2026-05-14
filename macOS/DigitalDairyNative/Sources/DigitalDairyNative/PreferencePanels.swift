@@ -1,6 +1,17 @@
 import AppKit
 import SwiftUI
 
+// MARK: - 内置日报模版（下拉；未写入 settings 时使用）
+
+private enum TemplatePresetCatalog {
+    static let builtin: [TemplatePreset] = [
+        TemplatePreset(id: "standard", label: "标准日报", path: "templates/daily_summary_prompt.md"),
+        TemplatePreset(id: "minimal", label: "精简要点", path: "templates/presets/minimal_daily.md"),
+        TemplatePreset(id: "wellness", label: "情绪与健康", path: "templates/presets/wellness_focus.md"),
+        TemplatePreset(id: "work", label: "执行与交付", path: "templates/presets/work_execution.md"),
+    ]
+}
+
 // MARK: - 常规与日程
 
 struct PrefsGeneralView: View {
@@ -263,44 +274,158 @@ struct PrefsGrowthDimensionsView: View {
     var body: some View {
         Form {
             Section {
-                Text("关闭的维度不会参与 Python 侧关键词 / 域名归类（与 tools/common.py 中 load_dimensions 一致）。")
+                Text("字段与 `config/growth_dimensions.json` 一致，保存后 Python 侧 `load_dimensions` 即生效。")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
-            if let doc = model.growthDimensionsFile {
-                ForEach(Array(doc.dimensions.enumerated()), id: \.element.id) { index, row in
-                    Section(row.name) {
-                        Toggle("参与归类", isOn: enabledBinding(index: index))
-                        Text(row.description)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("id：\(row.id)")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                            .textSelection(.enabled)
+            if model.growthDimensionsFile != nil {
+                Section {
+                    Button("新增维度") { addDimensionRow() }
+                }
+                if let doc = model.growthDimensionsFile {
+                    ForEach(Array(doc.dimensions.enumerated()), id: \.offset) { index, row in
+                        dimensionSection(index: index, headerTitle: row.name.isEmpty ? "维度 \(index + 1)" : row.name)
                     }
                 }
             } else {
                 Section {
                     Text(model.growthDimensionsError ?? "未加载到 growth_dimensions.json。")
                         .foregroundStyle(.secondary)
+                    Button("创建示例配置文件") {
+                        model.createGrowthDimensionsFromExample()
+                    }
                 }
             }
         }
         .formStyle(.grouped)
     }
 
+    private func addDimensionRow() {
+        guard var doc = model.growthDimensionsFile else { return }
+        let nid = "dim_\(Int(Date().timeIntervalSince1970))"
+        doc.dimensions.append(
+            GrowthDimensionsFile.Row(
+                id: nid,
+                name: "新维度",
+                description: "",
+                keywords: [],
+                hosts: [],
+                enabled: true
+            )
+        )
+        model.growthDimensionsFile = doc
+    }
+
+    private func deleteRow(at index: Int) {
+        guard var doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return }
+        doc.dimensions.remove(at: index)
+        model.growthDimensionsFile = doc
+    }
+
+    @ViewBuilder
+    private func dimensionSection(index: Int, headerTitle: String) -> some View {
+        Section(headerTitle) {
+            Toggle("参与归类", isOn: enabledBinding(index: index))
+            TextField("id（唯一标识）", text: idBinding(index: index))
+                .textSelection(.enabled)
+            TextField("显示名称", text: nameBinding(index: index))
+            TextField("描述", text: descriptionBinding(index: index), axis: .vertical)
+                .lineLimit(2 ... 8)
+            TextField("关键词（逗号分隔）", text: keywordsBinding(index: index), axis: .vertical)
+                .lineLimit(2 ... 6)
+            TextField("域名 / hosts（逗号分隔）", text: hostsBinding(index: index), axis: .vertical)
+                .lineLimit(2 ... 6)
+            Button("删除此维度", role: .destructive) {
+                deleteRow(at: index)
+            }
+        }
+    }
+
     private func enabledBinding(index: Int) -> Binding<Bool> {
         Binding(
             get: {
-                guard let doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else {
-                    return true
-                }
+                guard let doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return true }
                 return doc.dimensions[index].enabled
             },
             set: { newValue in
-                guard var doc = model.growthDimensionsFile else { return }
+                guard var doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return }
                 doc.dimensions[index].enabled = newValue
+                model.growthDimensionsFile = doc
+            }
+        )
+    }
+
+    private func idBinding(index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                guard let doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return "" }
+                return doc.dimensions[index].id
+            },
+            set: { newValue in
+                guard var doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return }
+                doc.dimensions[index].id = newValue.trimmingCharacters(in: .whitespacesAndNewlines)
+                model.growthDimensionsFile = doc
+            }
+        )
+    }
+
+    private func nameBinding(index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                guard let doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return "" }
+                return doc.dimensions[index].name
+            },
+            set: { newValue in
+                guard var doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return }
+                doc.dimensions[index].name = newValue
+                model.growthDimensionsFile = doc
+            }
+        )
+    }
+
+    private func descriptionBinding(index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                guard let doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return "" }
+                return doc.dimensions[index].description
+            },
+            set: { newValue in
+                guard var doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return }
+                doc.dimensions[index].description = newValue
+                model.growthDimensionsFile = doc
+            }
+        )
+    }
+
+    private func keywordsBinding(index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                guard let doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return "" }
+                return doc.dimensions[index].keywords.joined(separator: ", ")
+            },
+            set: { raw in
+                guard var doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return }
+                let parts = raw.split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+                doc.dimensions[index].keywords = parts
+                model.growthDimensionsFile = doc
+            }
+        )
+    }
+
+    private func hostsBinding(index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                guard let doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return "" }
+                return doc.dimensions[index].hosts.joined(separator: ", ")
+            },
+            set: { raw in
+                guard var doc = model.growthDimensionsFile, doc.dimensions.indices.contains(index) else { return }
+                let parts = raw.split(separator: ",")
+                    .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                    .filter { !$0.isEmpty }
+                doc.dimensions[index].hosts = parts
                 model.growthDimensionsFile = doc
             }
         )
@@ -310,18 +435,154 @@ struct PrefsGrowthDimensionsView: View {
 // MARK: - 模版
 
 struct PrefsTemplatesView: View {
+    @EnvironmentObject private var model: AppModel
     @Binding var settings: AppSettings
+    @State private var editorBody: String = ""
+    @State private var editorStatus: String = ""
+    @State private var showNewSheet = false
+    @State private var newLabel: String = "我的模版"
+    @State private var newRelativePath: String = "templates/presets/my_prompt.md"
+
+    private var basePresets: [TemplatePreset] {
+        if let p = settings.templates.promptPresets, !p.isEmpty { return p }
+        return TemplatePresetCatalog.builtin
+    }
+
+    private var pickerPresets: [TemplatePreset] {
+        let path = settings.templates.dailyPrompt
+        var rows = basePresets
+        if !rows.contains(where: { $0.path == path }) {
+            let tail = path.split(separator: "/").last.map(String.init) ?? path
+            rows.insert(TemplatePreset(id: "_adhoc", label: "当前文件：\(tail)", path: path), at: 0)
+        }
+        return rows
+    }
 
     var body: some View {
         Form {
-            Section("日报提示词") {
-                TextField("相对于项目根的 Markdown 路径", text: $settings.templates.dailyPrompt)
-                Text("例如 templates/daily_summary_prompt.md；修改后请保存。")
+            Section("当前模版") {
+                Picker("选择模版", selection: $settings.templates.dailyPrompt) {
+                    ForEach(pickerPresets) { pr in
+                        Text(pr.label).tag(pr.path)
+                    }
+                }
+                .onChange(of: settings.templates.dailyPrompt) { _, _ in
+                    reloadFromDisk()
+                }
+                Text(settings.templates.dailyPrompt)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
+            Section("正文（Markdown）") {
+                TextEditor(text: $editorBody)
+                    .font(.system(.body, design: .monospaced))
+                    .frame(minHeight: 300)
+                HStack(spacing: 12) {
+                    Button("从磁盘重新载入") { reloadFromDisk() }
+                    Button("保存模版到磁盘") { saveTemplateToDisk() }
+                }
+                if !editorStatus.isEmpty {
+                    Text(editorStatus)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Section("模版列表与新建") {
+                Button("将当前路径加入列表（若尚未列出）") { addCurrentPathToPresets() }
+                Button("新建模版文件…") { showNewSheet = true }
+                Text("内置四项可直接选用；自定义项在「保存到磁盘」写入 settings.json 的 `prompt_presets` 后出现。")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)
+        .onAppear { reloadFromDisk() }
+        .sheet(isPresented: $showNewSheet) {
+            Form {
+                TextField("列表中的显示名", text: $newLabel)
+                TextField("相对项目根的路径", text: $newRelativePath)
+                Text("若文件不存在，将写入一份简单 Markdown 骨架。")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                HStack {
+                    Button("取消", role: .cancel) { showNewSheet = false }
+                    Spacer()
+                    Button("创建并选用") { confirmNewTemplate() }
+                }
+            }
+            .padding(16)
+            .frame(minWidth: 420, minHeight: 200)
+        }
+    }
+
+    private func reloadFromDisk() {
+        editorStatus = ""
+        let path = settings.templates.dailyPrompt
+        do {
+            editorBody = try model.readProjectTextFile(relativePath: path)
+        } catch {
+            editorBody = ""
+            editorStatus = "读取失败：\(error.localizedDescription)"
+        }
+    }
+
+    private func saveTemplateToDisk() {
+        do {
+            try model.writeProjectTextFile(relativePath: settings.templates.dailyPrompt, content: editorBody)
+            editorStatus = "已保存 \(settings.templates.dailyPrompt)"
+        } catch {
+            editorStatus = "保存失败：\(error.localizedDescription)"
+        }
+    }
+
+    private func addCurrentPathToPresets() {
+        let path = settings.templates.dailyPrompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !path.isEmpty else { return }
+        var list = settings.templates.promptPresets ?? TemplatePresetCatalog.builtin
+        guard !list.contains(where: { $0.path == path }) else {
+            editorStatus = "该路径已在列表中。"
+            return
+        }
+        let tail = path.split(separator: "/").last.map(String.init) ?? path
+        list.append(TemplatePreset(id: UUID().uuidString, label: tail, path: path))
+        settings.templates.promptPresets = list
+        editorStatus = "已加入列表；请再点侧栏「保存到磁盘」写入 settings.json。"
+    }
+
+    private func confirmNewTemplate() {
+        let path = newRelativePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !path.isEmpty else { return }
+        let label = newLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? (path.split(separator: "/").last.map(String.init) ?? path)
+            : newLabel.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var list = settings.templates.promptPresets ?? TemplatePresetCatalog.builtin
+        if !list.contains(where: { $0.path == path }) {
+            list.append(TemplatePreset(id: UUID().uuidString, label: label, path: path))
+            settings.templates.promptPresets = list
+        }
+        settings.templates.dailyPrompt = path
+
+        let starter = """
+        # 日报提示词
+
+        请基于 Personal Growth OS 今日数据，生成 **{date}** 的每日总结。
+
+        （在此编写你对结构、语气与优先级的说明。）
+        """
+        do {
+            if let u = model.fileURLForProjectRelativePath(path), !FileManager.default.fileExists(atPath: u.path) {
+                try model.writeProjectTextFile(relativePath: path, content: starter)
+            }
+        } catch {
+            editorStatus = "创建文件失败：\(error.localizedDescription)"
+            showNewSheet = false
+            return
+        }
+        reloadFromDisk()
+        showNewSheet = false
+        editorStatus = "已创建并切换到新模版；请保存 settings.json 与模版正文。"
     }
 }
 

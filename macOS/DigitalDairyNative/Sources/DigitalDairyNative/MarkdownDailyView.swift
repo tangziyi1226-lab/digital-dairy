@@ -2,7 +2,7 @@ import SwiftUI
 
 struct MarkdownDailyView: View {
     @EnvironmentObject private var model: AppModel
-    @State private var attributed = AttributedString()
+    @State private var preparedMarkdown: String = ""
     @State private var loadMessage: String = ""
 
     var body: some View {
@@ -37,10 +37,8 @@ struct MarkdownDailyView: View {
                     Text("✨ 今日总结")
                         .font(.system(.title2, design: .rounded).weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text(attributed)
-                        .lineSpacing(6)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .textSelection(.enabled)
+                    WrappingMarkdownTextView(markdown: preparedMarkdown)
+                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 120, alignment: .leading)
                 }
                 .padding(18)
             }
@@ -71,34 +69,24 @@ struct MarkdownDailyView: View {
     }
 
     private func reload() {
+        func commit(_ text: String, message: String = "") {
+            preparedMarkdown = text
+            loadMessage = message
+        }
         guard let url = model.summaryURL(for: model.dashboardDate) else {
-            attributed = AttributedString("未找到数据目录。")
-            loadMessage = ""
+            commit("未找到数据目录。")
             return
         }
         guard FileManager.default.fileExists(atPath: url.path) else {
-            attributed = AttributedString("该日尚无总结文件。可先运行「生成今日日报」或选择其它日期。✨")
-            loadMessage = ""
+            commit("该日尚无总结文件。可先运行「生成今日日报」或选择其它日期。✨")
             return
         }
         do {
             let raw = try String(contentsOf: url, encoding: .utf8)
             let prepared = DailySummaryMarkdown.prepareSourceForParsing(raw)
-            if let parsed = try? DailySummaryMarkdown.parseStyledDocument(prepared) {
-                attributed = parsed
-            } else {
-                var opts = AttributedString.MarkdownParsingOptions()
-                opts.interpretedSyntax = .full
-                if let fallback = try? AttributedString(markdown: prepared, options: opts) {
-                    attributed = fallback
-                } else {
-                    attributed = AttributedString(prepared)
-                }
-            }
-            loadMessage = ""
+            commit(prepared)
         } catch {
-            attributed = AttributedString("读取失败：\(error.localizedDescription)")
-            loadMessage = ""
+            commit("读取失败：\(error.localizedDescription)")
         }
     }
 }

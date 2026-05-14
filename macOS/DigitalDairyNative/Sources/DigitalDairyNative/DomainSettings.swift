@@ -1,5 +1,12 @@
 import Foundation
 
+/// 日报模版库条目（`settings.json` → `templates.prompt_presets`）。
+struct TemplatePreset: Codable, Equatable, Identifiable, Hashable {
+    var id: String
+    var label: String
+    var path: String
+}
+
 /// 与 `config/settings.example.json` 对齐的应用设置（用于 GUI 编辑与保存）。
 struct AppSettings: Codable, Equatable {
     struct UserBlock: Codable, Equatable {
@@ -31,6 +38,30 @@ struct AppSettings: Codable, Equatable {
 
     struct TemplatesBlock: Codable, Equatable {
         var dailyPrompt: String
+        /// 可选；为空时界面使用内置下拉列表，不改变 `daily_prompt` 语义。
+        var promptPresets: [TemplatePreset]?
+
+        enum CodingKeys: String, CodingKey {
+            case dailyPrompt = "daily_prompt"
+            case promptPresets = "prompt_presets"
+        }
+
+        init(dailyPrompt: String, promptPresets: [TemplatePreset]? = nil) {
+            self.dailyPrompt = dailyPrompt
+            self.promptPresets = promptPresets
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            dailyPrompt = try c.decode(String.self, forKey: .dailyPrompt)
+            promptPresets = try c.decodeIfPresent([TemplatePreset].self, forKey: .promptPresets)
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var c = encoder.container(keyedBy: CodingKeys.self)
+            try c.encode(dailyPrompt, forKey: .dailyPrompt)
+            try c.encodeIfPresent(promptPresets, forKey: .promptPresets)
+        }
     }
 
     struct DataRetentionBlock: Codable, Equatable {
