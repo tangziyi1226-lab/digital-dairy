@@ -143,6 +143,44 @@ launchctl load ~/Library/LaunchAgents/com.personal-growth-os.inbox.plist
 
 开场白话术等在 `settings.json` 的 `messages.daily_opening_hint`；总结结构在 `templates/daily_summary_prompt.md`。
 
+## macOS 状态栏工具 + DMG 打包
+
+项目已提供一个最小状态栏入口（`app/status_bar.py`）和打包脚本，可在 macOS 生成可分发的 `.dmg`。
+
+### 1) 安装打包依赖（仅首次）
+
+```bash
+bash scripts/build_macos_dmg.sh
+```
+
+脚本会自动在项目目录创建（或复用）`.venv-macos-app` 并安装打包依赖，然后生成 `.app` 和 `.dmg`。
+
+如果你还要让状态栏里“生成日报”功能可用，请另外在项目运行环境安装业务依赖：
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+### 2) 构建 `.dmg`
+
+```bash
+bash scripts/build_macos_dmg.sh
+```
+
+生成物在：
+
+- `dist/Digital Dairy.app`
+- `dist/Digital-Dairy-StatusBar.dmg`
+
+### 3) 状态栏工具包含功能
+
+- 立即生成今日日报（等价于运行 `scripts/run_daily.py`）
+- 仅采集（Dry Run）
+- 打开今日日报
+- 设置并保存项目根目录（首次启动需要）
+
+> 说明：状态栏工具会优先使用项目内 `.venv/bin/python3`，否则退回系统 `python3`。
+
 ## 问答与 Inbox
 
 **单条：**
