@@ -7,20 +7,58 @@ import SwiftUI
 final class AppModel: ObservableObject {
     enum SidebarItem: String, CaseIterable, Identifiable {
         case run = "运行与日志"
-        case settings = "配置文件"
-        var id: String { rawValue }
-    }
+        case dailyReport = "日报阅览"
+        case charts = "数据图表"
+        case prefsGeneral = "常规与日程"
+        case prefsApi = "模型与 API"
+        case prefsCollectors = "采集数据源"
+        case prefsNotifications = "通知"
+        case prefsAdvanced = "高级与保留"
+        case appearance = "外观与主题"
+        case about = "关于"
 
-    enum SettingsDoc: String, CaseIterable {
-        case settings = "settings.json"
-        case toolSwitches = "tool_switches.json"
+        var id: String { rawValue }
+
+        var symbolName: String {
+            switch self {
+            case .run: return "play.circle"
+            case .dailyReport: return "doc.text"
+            case .charts: return "chart.bar"
+            case .prefsGeneral: return "person.text.rectangle"
+            case .prefsApi: return "cpu"
+            case .prefsCollectors: return "arrow.down.doc"
+            case .prefsNotifications: return "bell"
+            case .prefsAdvanced: return "slider.horizontal.3"
+            case .appearance: return "paintpalette"
+            case .about: return "info.circle"
+            }
+        }
+
+        var sidebarSection: Int {
+            switch self {
+            case .run, .dailyReport, .charts: return 0
+            case .prefsGeneral, .prefsApi, .prefsCollectors, .prefsNotifications, .prefsAdvanced: return 1
+            case .appearance, .about: return 2
+            }
+        }
+
+        var sectionTitle: String {
+            switch sidebarSection {
+            case 0: return "工作台"
+            case 1: return "偏好设置"
+            default: return "其他"
+            }
+        }
+
+        static func items(in section: Int) -> [SidebarItem] {
+            allCases.filter { $0.sidebarSection == section }
+        }
     }
 
     static let appName = "Digital Dairy"
     private static let writableDisplayName = "DigitalDairy"
 
     @Published var sidebarSelection: SidebarItem = .run
-    @Published var settingsDoc: SettingsDoc = .settings
     @Published var projectPathDisplay: String = ""
     @Published var isBundled: Bool = false
     @Published var statusText: String = "就绪"
@@ -28,8 +66,11 @@ final class AppModel: ObservableObject {
     @Published var busy: Bool = false
     @Published var themeStartHex: String = "#7FA8FF"
     @Published var themeEndHex: String = "#9DE7D7"
-    @Published var settingsEditorText: String = ""
-    @Published var settingsLoadError: String?
+    @Published var dashboardDate: Date = .init()
+    @Published var appSettings: AppSettings?
+    @Published var toolSwitches: [String: ToolSwitchRow] = [:]
+    @Published var settingsFormError: String?
+    @Published var configurationEpoch: Int = 0
     @Published var alertTitle: String = ""
     @Published var alertMessage: String = ""
     @Published var showAlert: Bool = false
@@ -73,13 +114,92 @@ final class AppModel: ObservableObject {
             projectPathDisplay = displayProjectPath()
         }
 
-        reloadSettingsEditor()
+        loadConfiguration()
+    }
+
+    func dayString(_ date: Date) -> String {
+        Self.localYyyyMmDd(date)
+    }
+
+    func summaryURL(for date: Date) -> URL? {
+        guard let root = settingsTargetRoot() else { return nil }
+        return root.appendingPathComponent("data/summaries/\(dayString(date))-summary.md")
+    }
+
+    func eventsURL(for date: Date) -> URL? {
+        guard let root = settingsTargetRoot() else { return nil }
+        return root.appendingPathComponent("data/events/\(dayString(date))-events.json")
     }
 
     func saveTheme() {
         state["theme_start"] = themeStartHex
         state["theme_end"] = themeEndHex
         saveState()
+    }
+
+    func loadConfiguration() {
+        settingsFormError = nil
+        guard let root = settingsTargetRoot() else {
+            appSettings = nil
+            toolSwitches = [:]
+            settingsFormError = "未找到配置根目录（开发版请在「运行与日志」中选择仓库根目录）。"
+            configurationEpoch += 1
+            return
+        }
+        let settingsURL = root.appendingPathComponent("config/settings.json")
+        if FileManager.default.fileExists(atPath: settingsURL.path) {
+            do {
+                appSettings = try AppSettings.load(from: settingsURL)
+            } catch {
+                appSettings = nil
+                settingsFormError = "读取 settings.json 失败：\(error.localizedDescription)"
+            }
+        } else {
+            appSettings = nil
+            settingsFormError = "未找到 config/settings.json。安装版首次启动应已自动生成；若缺失请删除「文稿/\(Self.writableDisplayName)/config」后重启应用。"
+        }
+
+        let toolURL = toolSwitchesFileURL(projectRoot: root, settings: appSettings)
+        if FileManager.default.fileExists(atPath: toolURL.path) {
+            do {
+                let raw = try ToolSwitchesFile.load(from: toolURL)
+                toolSwitches = ToolSwitchesFile.normalized(raw)
+            } catch {
+                toolSwitches = ToolSwitchesFile.normalized([:])
+                settingsFormError = (settingsFormError.map { $0 + "\n" } ?? "")
+                    + "读取 tool_switches 失败：\(error.localizedDescription)"
+            }
+        } else {
+            toolSwitches = ToolSwitchesFile.normalized([:])
+        }
+        configurationEpoch += 1
+    }
+
+    func saveAppSettingsToDisk() {
+        guard let settings = appSettings, let root = settingsTargetRoot() else {
+            presentAlert(title: Self.appName, message: "没有可保存的设置（请先解决读取错误）。")
+            return
+        }
+        let url = root.appendingPathComponent("config/settings.json")
+        do {
+            try settings.save(to: url)
+            presentAlert(title: Self.appName, message: "已保存「常规 / API / 通知」等设置。")
+            loadConfiguration()
+        } catch {
+            presentAlert(title: "保存失败", message: error.localizedDescription)
+        }
+    }
+
+    func saveToolSwitchesToDisk() {
+        guard let root = settingsTargetRoot() else { return }
+        let url = toolSwitchesFileURL(projectRoot: root, settings: appSettings)
+        do {
+            try ToolSwitchesFile.save(toolSwitches, to: url)
+            presentAlert(title: Self.appName, message: "已保存采集开关。")
+            loadConfiguration()
+        } catch {
+            presentAlert(title: "保存失败", message: error.localizedDescription)
+        }
     }
 
     func chooseProjectFolder() {
@@ -102,20 +222,21 @@ final class AppModel: ObservableObject {
             state["project_root"] = url.path
             saveState()
             projectPathDisplay = displayProjectPath()
-            reloadSettingsEditor()
+            loadConfiguration()
             appendLog("已选择项目：\(url.path)")
         }
     }
 
     func runDaily() {
-        runSubprocess(label: "日报生成", extraArgs: [], needApi: true)
+        // 可视化改由应用内 Swift Charts 呈现，不再附加 HTML/Playwright 截图到 Markdown。
+        runSubprocess(label: "日报生成", extraArgs: ["--no-visual-screenshots"], needApi: true)
     }
 
     func runDry() {
         runSubprocess(label: "仅采集", extraArgs: ["--dry-run", "--no-notify"], needApi: false)
     }
 
-    func openTodaySummary() {
+    func openTodaySummaryExternally() {
         guard let ctx = dailyContext() else {
             presentAlert(title: Self.appName, message: "无法打开：请先完成项目配置。")
             return
@@ -138,54 +259,6 @@ final class AppModel: ObservableObject {
         let (code, writable) = ctx
         let target = isBundled ? writable : code
         NSWorkspace.shared.open(target)
-    }
-
-    func reloadSettingsEditor() {
-        settingsLoadError = nil
-        guard let root = settingsTargetRoot() else {
-            settingsEditorText = ""
-            settingsLoadError = "请先在侧栏选择项目目录（开发版），或确认安装版已完成首次初始化。"
-            return
-        }
-        let path: URL
-        switch settingsDoc {
-        case .settings:
-            path = root.appendingPathComponent("config/settings.json")
-        case .toolSwitches:
-            path = resolvedToolSwitchesURL(projectRoot: root)
-        }
-        if FileManager.default.fileExists(atPath: path.path) {
-            do {
-                settingsEditorText = try String(contentsOf: path, encoding: .utf8)
-            } catch {
-                settingsLoadError = error.localizedDescription
-                settingsEditorText = ""
-            }
-        } else {
-            settingsEditorText = ""
-            settingsLoadError = "文件不存在：\(path.path)"
-        }
-    }
-
-    func saveSettingsEditor() {
-        guard let root = settingsTargetRoot() else {
-            presentAlert(title: Self.appName, message: "没有可写入的配置根目录。")
-            return
-        }
-        let path: URL
-        switch settingsDoc {
-        case .settings:
-            path = root.appendingPathComponent("config/settings.json")
-        case .toolSwitches:
-            path = resolvedToolSwitchesURL(projectRoot: root)
-        }
-        do {
-            try FileManager.default.createDirectory(at: path.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try settingsEditorText.data(using: .utf8)?.write(to: path)
-            presentAlert(title: Self.appName, message: "已保存：\(path.lastPathComponent)")
-        } catch {
-            presentAlert(title: "保存失败", message: error.localizedDescription)
-        }
     }
 
     func appendLog(_ line: String) {
@@ -262,7 +335,7 @@ final class AppModel: ObservableObject {
         return "未选择"
     }
 
-    private func settingsTargetRoot() -> URL? {
+    func settingsTargetRoot() -> URL? {
         if isBundled {
             return writableRoot
         }
@@ -272,7 +345,18 @@ final class AppModel: ObservableObject {
         return nil
     }
 
-    private func resolvedToolSwitchesURL(projectRoot: URL) -> URL {
+    private func toolSwitchesFileURL(projectRoot: URL, settings: AppSettings?) -> URL {
+        guard let s = settings else {
+            return resolvedToolSwitchesURLLegacy(projectRoot: projectRoot)
+        }
+        let rel = s.toolSwitchesPath
+        if rel.hasPrefix("/") {
+            return URL(fileURLWithPath: rel)
+        }
+        return projectRoot.appendingPathComponent(rel)
+    }
+
+    private func resolvedToolSwitchesURLLegacy(projectRoot: URL) -> URL {
         let settingsPath = projectRoot.appendingPathComponent("config/settings.json")
         var relative = "config/tool_switches.json"
         if let data = try? Data(contentsOf: settingsPath),
@@ -327,9 +411,20 @@ final class AppModel: ObservableObject {
     }
 
     private func apiReady(writable: URL) -> (Bool, String) {
+        if let s = appSettings {
+            let envName = s.api.apiKeyEnv
+            if let v = ProcessInfo.processInfo.environment[envName], !v.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return (true, "")
+            }
+            let literal = s.api.apiKey.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !literal.isEmpty, !literal.hasPrefix("PUT_") {
+                return (true, "")
+            }
+            return (false, "未配置 API Key：请设置环境变量 \(envName)，或在「模型与 API」中填写密钥。")
+        }
         let path = writable.appendingPathComponent("config/settings.json")
         guard FileManager.default.fileExists(atPath: path.path) else {
-            return (false, "未找到 config/settings.json，请先在「配置文件」中保存一次配置。")
+            return (false, "未找到 config/settings.json，请先在「常规与日程」保存一次配置。")
         }
         guard let data = try? Data(contentsOf: path),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
@@ -345,7 +440,7 @@ final class AppModel: ObservableObject {
         if !literal.isEmpty, !literal.hasPrefix("PUT_") {
             return (true, "")
         }
-        return (false, "未配置 API Key：请设置环境变量 \(envName)，或在 settings.json 填写 api.api_key。")
+        return (false, "未配置 API Key：请设置环境变量 \(envName)，或在「模型与 API」中填写密钥。")
     }
 
     private func runSubprocess(label: String, extraArgs: [String], needApi: Bool) {
@@ -385,6 +480,7 @@ final class AppModel: ObservableObject {
                     self.appendLog(result.output)
                 }
                 if result.code == 0 {
+                    self.loadConfiguration()
                     self.presentAlert(title: Self.appName, message: "\(label)已完成。")
                 } else {
                     self.presentAlert(title: Self.appName, message: "\(label)失败，请查看日志。")
@@ -427,7 +523,6 @@ final class AppModel: ObservableObject {
             && FileManager.default.fileExists(atPath: tools.path)
     }
 
-    /// 从 Swift 源码位置向上查找仓库根（`swift run` / Xcode 调试时无 app-runtime）。
     private static func findDevRepoRoot() -> URL? {
         let thisFile = URL(fileURLWithPath: #filePath).resolvingSymlinksInPath()
         var cur = thisFile.deletingLastPathComponent()

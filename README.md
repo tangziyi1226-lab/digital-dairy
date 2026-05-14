@@ -182,7 +182,7 @@ python3 -m pip install -r requirements.txt
 
 - **DMG 安装版**：数据与配置在 `~/Documents/DigitalDairy`（含 `state.json`），首次启动会自动从模板生成 `settings.json` / `tool_switches.json` 等；无需选择项目目录。
 - **源码 / 调试运行**：在 Xcode 中打开 `macOS/DigitalDairyNative/Package.swift`，或执行 `cd macOS/DigitalDairyNative && swift run`；若未识别到仓库根，可在界面「选择项目目录…」指向克隆路径。
-- 生成今日日报 / 仅采集（Dry Run），日志在窗口内展示；「配置文件」侧栏提供 `settings.json` / `tool_switches.json` 的文本编辑与保存（替代原先 Tk 表单）。
+- 生成今日日报 / 仅采集（Dry Run），日志在窗口内展示；侧栏提供**表单化偏好设置**（常规、API、采集开关、通知、高级），以及 **Markdown 日报阅览** 与基于当日 `events.json` 的 **Swift Charts 嵌入式图表**（默认不再依赖 HTML/Playwright 截图附录；原生应用调用日报时会附加 `--no-visual-screenshots`）。
 - 打开今日总结、在 Finder 中打开数据目录（安装版）或项目目录（开发版）。
 
 旧版 Tk 入口（仍可用）：

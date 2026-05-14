@@ -19,9 +19,21 @@ struct ContentView: View {
 
             NavigationSplitView {
                 List(selection: $model.sidebarSelection) {
-                    Section("Digital Dairy") {
-                        ForEach(AppModel.SidebarItem.allCases) { item in
-                            Label(item.rawValue, systemImage: item == .run ? "play.circle" : "doc.richtext")
+                    Section("工作台") {
+                        ForEach(AppModel.SidebarItem.items(in: 0)) { item in
+                            Label(item.rawValue, systemImage: item.symbolName)
+                                .tag(item)
+                        }
+                    }
+                    Section("偏好设置") {
+                        ForEach(AppModel.SidebarItem.items(in: 1)) { item in
+                            Label(item.rawValue, systemImage: item.symbolName)
+                                .tag(item)
+                        }
+                    }
+                    Section("其他") {
+                        ForEach(AppModel.SidebarItem.items(in: 2)) { item in
+                            Label(item.rawValue, systemImage: item.symbolName)
                                 .tag(item)
                         }
                     }
@@ -29,19 +41,12 @@ struct ContentView: View {
                 .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
                 .background(.ultraThinMaterial)
-                .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 280)
+                .navigationSplitViewColumnWidth(min: 210, ideal: 240, max: 300)
             } detail: {
-                Group {
-                    switch model.sidebarSelection {
-                    case .run:
-                        RunTabView()
-                    case .settings:
-                        ConfigEditorPanel()
-                    }
-                }
-                .background(.regularMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                .padding(10)
+                detailContent
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .padding(10)
             }
             .navigationTitle(AppModel.appName)
         }
@@ -51,7 +56,76 @@ struct ContentView: View {
             Text(model.alertMessage)
         }
     }
+
+    @ViewBuilder
+    private var detailContent: some View {
+        switch model.sidebarSelection {
+        case .run:
+            RunTabView()
+        case .dailyReport:
+            MarkdownDailyView()
+        case .charts:
+            EventChartsView()
+        case .prefsGeneral, .prefsApi, .prefsCollectors, .prefsNotifications, .prefsAdvanced:
+            PreferenceDetailShell(tab: model.sidebarSelection)
+        case .appearance:
+            ScrollView {
+                AppearancePanel()
+            }
+            .padding(8)
+        case .about:
+            AboutPanel()
+        }
+    }
 }
+
+// MARK: - 偏好页外壳（保存 / 重新载入）
+
+private struct PreferenceDetailShell: View {
+    @EnvironmentObject private var model: AppModel
+    let tab: AppModel.SidebarItem
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                PreferencesHostView(tab: tab)
+                    .padding(.bottom, 8)
+            }
+            if showsActionBar {
+                HStack(spacing: 12) {
+                    Button("保存到磁盘") {
+                        if tab == .prefsCollectors {
+                            model.saveToolSwitchesToDisk()
+                        } else {
+                            model.saveAppSettingsToDisk()
+                        }
+                    }
+                    .keyboardShortcut("s", modifiers: [.command])
+                    Button("重新载入") {
+                        model.loadConfiguration()
+                    }
+                    Spacer()
+                }
+                .padding(12)
+                .background(.ultraThinMaterial)
+            }
+        }
+    }
+
+    private var showsActionBar: Bool {
+        guard model.settingsTargetRoot() != nil else { return false }
+        switch tab {
+        case .prefsGeneral, .prefsApi, .prefsNotifications, .prefsAdvanced:
+            return model.appSettings != nil
+        case .prefsCollectors:
+            return true
+        default:
+            return false
+        }
+    }
+}
+
+// MARK: - 运行
 
 private struct RunTabView: View {
     @EnvironmentObject private var model: AppModel
@@ -82,29 +156,16 @@ private struct RunTabView: View {
                         .disabled(model.busy)
                     Button("仅采集（Dry Run）") { model.runDry() }
                         .disabled(model.busy)
-                    Button("打开今日总结") { model.openTodaySummary() }
+                    Button("用外部编辑器打开今日总结") { model.openTodaySummaryExternally() }
                     Button(model.isBundled ? "在 Finder 中打开数据目录" : "在 Finder 中打开项目") {
                         model.openInFinder()
                     }
                 }
 
-                Section("渐变主题") {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(
-                            LinearGradient(
-                                colors: [Color(hex: model.themeStartHex), Color(hex: model.themeEndHex)],
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(height: 56)
-                        .overlay {
-                            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                                .strokeBorder(.white.opacity(0.35), lineWidth: 1)
-                        }
-
-                    ColorPicker("起始色", selection: hexBinding(\.themeStartHex))
-                    ColorPicker("结束色", selection: hexBinding(\.themeEndHex))
+                Section("提示") {
+                    Text("日报正文与图表请在侧栏「日报阅览」「数据图表」查看；生成时已跳过 HTML 截图附录。")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             .formStyle(.grouped)
@@ -117,23 +178,6 @@ private struct RunTabView: View {
                 .frame(minWidth: 360)
         }
         .padding(14)
-    }
-
-    private func hexBinding(_ keyPath: ReferenceWritableKeyPath<AppModel, String>) -> Binding<Color> {
-        Binding(
-            get: {
-                Color(hex: model[keyPath: keyPath])
-            },
-            set: { newValue in
-                if let cg = NSColor(newValue).usingColorSpace(.deviceRGB) {
-                    let r = Int(round(cg.redComponent * 255))
-                    let g = Int(round(cg.greenComponent * 255))
-                    let b = Int(round(cg.blueComponent * 255))
-                    model[keyPath: keyPath] = String(format: "#%02X%02X%02X", r, g, b)
-                    model.saveTheme()
-                }
-            }
-        )
     }
 }
 
@@ -163,53 +207,5 @@ private struct RunLogPanel: View {
         .padding(10)
         .background(.thinMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-    }
-}
-
-private struct ConfigEditorPanel: View {
-    @EnvironmentObject private var model: AppModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("配置文件")
-                    .font(.title3.weight(.semibold))
-                Spacer()
-                Picker("", selection: $model.settingsDoc) {
-                    ForEach(AppModel.SettingsDoc.allCases, id: \.self) { doc in
-                        Text(doc.rawValue).tag(doc)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .frame(maxWidth: 420)
-            }
-
-            if let err = model.settingsLoadError {
-                Text(err)
-                    .foregroundStyle(.secondary)
-            }
-
-            TextEditor(text: $model.settingsEditorText)
-                .font(.system(.body, design: .monospaced))
-                .scrollContentBackground(.hidden)
-                .padding(8)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-
-            HStack {
-                Button("重新载入") {
-                    model.reloadSettingsEditor()
-                }
-                Button("保存") {
-                    model.saveSettingsEditor()
-                }
-                .keyboardShortcut("s", modifiers: [.command])
-                Spacer()
-            }
-        }
-        .padding(14)
-        .onAppear { model.reloadSettingsEditor() }
-        .onChange(of: model.settingsDoc) { _, _ in
-            model.reloadSettingsEditor()
-        }
     }
 }
